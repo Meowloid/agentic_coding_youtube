@@ -34,6 +34,7 @@
 - Wrapped each server request in error handling and added a shutdown message so stopping the script from PowerShell is clearer.
 - Suppressed misleading "Paused" announcements during playlist next/previous transitions.
 - Prevented the final tap of the Status triple-tap from immediately activating caregiver panel buttons.
+- Prevented the final tap of the Status triple-tap from immediately closing the caregiver panel through backdrop dismissal.
 
 ### Changed
 

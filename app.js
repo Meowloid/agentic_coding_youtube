@@ -406,6 +406,10 @@ caregiverCloseButton.addEventListener("click", () => {
   }
 });
 caregiverPanel.addEventListener("click", (event) => {
+  if (Date.now() - caregiverOpenedAt < CAREGIVER_OPEN_GUARD_MS) {
+    return;
+  }
+
   if (event.target === caregiverPanel) {
     closeCaregiverPanel();
   }
