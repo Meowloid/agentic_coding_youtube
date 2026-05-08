@@ -1,0 +1,5 @@
+.server-url
+server.out.log
+server.err.log
+Thumbs.db
+.DS_Store

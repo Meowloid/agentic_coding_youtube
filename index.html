@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Accessible YouTube Player Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app" aria-label="Accessible YouTube player prototype">
+      <section class="player-region" aria-label="YouTube player">
+        <div id="youtube-player"></div>
+      </section>
+
+      <section class="status-region" aria-live="polite" aria-atomic="true">
+        <p class="eyebrow">Prototype 1</p>
+        <h1 data-title>Loading YouTube player</h1>
+        <p data-status>Preparing controls.</p>
+      </section>
+
+      <section class="quadrants" aria-label="Large touch controls">
+        <button class="quadrant quadrant-play" data-action="play" type="button">
+          <span>Play</span>
+        </button>
+        <button class="quadrant quadrant-status" data-action="status" type="button">
+          <span>Status</span>
+        </button>
+        <button class="quadrant quadrant-previous" data-action="previous" type="button">
+          <span>Previous</span>
+        </button>
+        <button class="quadrant quadrant-next" data-action="next" type="button">
+          <span>Next</span>
+        </button>
+      </section>
+
+      <section class="caregiver-panel" data-caregiver-panel hidden aria-label="Caregiver settings">
+        <div class="caregiver-dialog" role="dialog" aria-modal="true" aria-labelledby="caregiver-title">
+          <p class="eyebrow">Caregiver</p>
+          <h2 id="caregiver-title">Settings</h2>
+          <button class="caregiver-action" data-caregiver-open-youtube type="button">Open Current Video In YouTube</button>
+          <button class="caregiver-action" data-caregiver-close type="button">Close</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
+  </body>
+</html>
