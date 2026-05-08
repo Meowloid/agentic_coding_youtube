@@ -299,6 +299,20 @@ Prototype 1 is successful if:
 - Normal YouTube ads do not interrupt playback when signed in with Premium.
 - She can recover to the starting state.
 
+### Home / Reset Meaning
+
+For the current prototype, Home means returning to the beginning of the configured playlist or video.
+
+In future versions, Home should mean returning to the stable starting source selection. That could include:
+
+- Main playlist.
+- Latest uploads.
+- Favorite channels.
+- Audio novel sources.
+- Discovery mode.
+
+The important property is not the exact source. The important property is that Home is always a known, recoverable state.
+
 ## Future Story: Caregiver Settings And Open In YouTube
 
 There should eventually be a separate caregiver/settings path that is not part of the main blind-user control surface.

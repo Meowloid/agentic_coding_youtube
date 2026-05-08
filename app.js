@@ -40,6 +40,7 @@ let longPressTriggered = false;
 let touchStart = null;
 let suppressPauseUntil = 0;
 let statusTapTimes = [];
+let playTapTimes = [];
 let caregiverHistoryOpen = false;
 let caregiverOpenedAt = 0;
 
@@ -141,6 +142,11 @@ function performAction(action) {
     return;
   }
 
+  if (action === "play" && registerPlayTap()) {
+    goHome();
+    return;
+  }
+
   switch (action) {
     case "play":
       startPlayback();
@@ -157,6 +163,19 @@ function performAction(action) {
     default:
       break;
   }
+}
+
+function registerPlayTap() {
+  const now = Date.now();
+  playTapTimes = playTapTimes.filter((tapTime) => now - tapTime <= TRIPLE_TAP_MS);
+  playTapTimes.push(now);
+
+  if (playTapTimes.length >= 3) {
+    playTapTimes = [];
+    return true;
+  }
+
+  return false;
 }
 
 function registerStatusTap() {
@@ -187,6 +206,34 @@ function startPlayback() {
   hasStarted = true;
   setStatus("Starting playback.");
   speak("Starting playback.");
+}
+
+function goHome() {
+  if (!playerReady) {
+    speak("Home.");
+    return;
+  }
+
+  if (!caregiverPanel.hidden) {
+    caregiverPanel.hidden = true;
+    caregiverHistoryOpen = false;
+  }
+
+  window.speechSynthesis.cancel();
+  markNavigationTransition();
+  hasStarted = false;
+  isPlaying = false;
+
+  if (PLAYER_CONFIG.playlistId && typeof player.loadPlaylist === "function") {
+    player.loadPlaylist({ list: PLAYER_CONFIG.playlistId, index: 0, startSeconds: 0 });
+    player.pauseVideo();
+  } else if (PLAYER_CONFIG.videoId && typeof player.loadVideoById === "function") {
+    player.loadVideoById({ videoId: PLAYER_CONFIG.videoId, startSeconds: 0 });
+    player.pauseVideo();
+  }
+
+  setStatus("Home. Starting source reset.");
+  speak("Home.");
 }
 
 function previousVideo() {

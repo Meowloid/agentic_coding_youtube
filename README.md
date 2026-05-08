@@ -56,6 +56,11 @@ For the most realistic test:
 - Swipe up: speak current state.
 - Swipe down: play or pause.
 - Triple tap Status: open caregiver settings.
+- Triple tap Play: Home/reset to the starting source.
+
+## Home
+
+Triple tap Play to return Home. In the current prototype, Home means resetting to the beginning of the configured playlist or video. In future versions, Home can become the stable starting point for multiple sources, such as playlists, latest uploads, or discovery modes.
 
 ## Caregiver Settings
 
