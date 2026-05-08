@@ -9,6 +9,7 @@ const LONG_PRESS_MS = 750;
 const SWIPE_MIN_DISTANCE = 60;
 const NAVIGATION_TRANSITION_MS = 1800;
 const TRIPLE_TAP_MS = 900;
+const CAREGIVER_OPEN_GUARD_MS = 450;
 
 const controls = {
   play: {
@@ -40,6 +41,7 @@ let touchStart = null;
 let suppressPauseUntil = 0;
 let statusTapTimes = [];
 let caregiverHistoryOpen = false;
+let caregiverOpenedAt = 0;
 
 const statusText = document.querySelector("[data-status]");
 const titleText = document.querySelector("[data-title]");
@@ -254,6 +256,7 @@ function openCaregiverPanel() {
 
   caregiverPanel.hidden = false;
   caregiverHistoryOpen = true;
+  caregiverOpenedAt = Date.now();
   window.history.pushState({ caregiverPanel: true }, "", window.location.href);
   setStatus("Caregiver settings opened.");
   speak("Caregiver settings.");
@@ -276,6 +279,10 @@ function closeCaregiverPanel(options = {}) {
 }
 
 function openCurrentVideoInYouTube() {
+  if (Date.now() - caregiverOpenedAt < CAREGIVER_OPEN_GUARD_MS) {
+    return;
+  }
+
   const videoId = getCurrentVideoId();
 
   if (!videoId) {
@@ -393,7 +400,11 @@ controlButtons.forEach((button) => {
 });
 
 caregiverOpenYoutubeButton.addEventListener("click", openCurrentVideoInYouTube);
-caregiverCloseButton.addEventListener("click", closeCaregiverPanel);
+caregiverCloseButton.addEventListener("click", () => {
+  if (Date.now() - caregiverOpenedAt >= CAREGIVER_OPEN_GUARD_MS) {
+    closeCaregiverPanel();
+  }
+});
 caregiverPanel.addEventListener("click", (event) => {
   if (event.target === caregiverPanel) {
     closeCaregiverPanel();

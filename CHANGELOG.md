@@ -33,6 +33,7 @@
 - Moved the PowerShell server's `Write-Response` helper above the request loop so the server can respond to browser requests correctly.
 - Wrapped each server request in error handling and added a shutdown message so stopping the script from PowerShell is clearer.
 - Suppressed misleading "Paused" announcements during playlist next/previous transitions.
+- Prevented the final tap of the Status triple-tap from immediately activating caregiver panel buttons.
 
 ### Changed
 
