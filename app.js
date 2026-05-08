@@ -10,6 +10,7 @@ const SWIPE_MIN_DISTANCE = 60;
 const NAVIGATION_TRANSITION_MS = 1800;
 const TRIPLE_TAP_MS = 900;
 const CAREGIVER_OPEN_GUARD_MS = 450;
+const HOME_RESET_GUARD_MS = 2500;
 
 const controls = {
   play: {
@@ -39,6 +40,7 @@ let longPressTimer = null;
 let longPressTriggered = false;
 let touchStart = null;
 let suppressPauseUntil = 0;
+let suppressPlayingUntil = 0;
 let statusTapTimes = [];
 let playTapTimes = [];
 let caregiverHistoryOpen = false;
@@ -92,6 +94,12 @@ function handlePlayerStateChange(event) {
     case YT.PlayerState.PLAYING:
       isPlaying = true;
       hasStarted = true;
+      if (Date.now() < suppressPlayingUntil) {
+        player.pauseVideo();
+        isPlaying = false;
+        hasStarted = false;
+        break;
+      }
       setStatus(`Playing. ${currentTitle}`);
       speakParts([
         { text: "Playing.", lang: getInterfaceLang() },
@@ -221,6 +229,7 @@ function goHome() {
 
   window.speechSynthesis.cancel();
   markNavigationTransition();
+  suppressPlayingUntil = Date.now() + HOME_RESET_GUARD_MS;
   hasStarted = false;
   isPlaying = false;
 
@@ -232,6 +241,12 @@ function goHome() {
 
   setStatus("Home. Starting source ready.");
   speak("Home.");
+
+  window.setTimeout(() => {
+    if (playerReady && player && Date.now() < suppressPlayingUntil && typeof player.pauseVideo === "function") {
+      player.pauseVideo();
+    }
+  }, 250);
 }
 
 function previousVideo() {
