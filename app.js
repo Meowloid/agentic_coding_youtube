@@ -39,6 +39,7 @@ let longPressTriggered = false;
 let touchStart = null;
 let suppressPauseUntil = 0;
 let statusTapTimes = [];
+let caregiverHistoryOpen = false;
 
 const statusText = document.querySelector("[data-status]");
 const titleText = document.querySelector("[data-title]");
@@ -247,13 +248,29 @@ function speakStatus() {
 }
 
 function openCaregiverPanel() {
+  if (!caregiverPanel.hidden) {
+    return;
+  }
+
   caregiverPanel.hidden = false;
+  caregiverHistoryOpen = true;
+  window.history.pushState({ caregiverPanel: true }, "", window.location.href);
   setStatus("Caregiver settings opened.");
   speak("Caregiver settings.");
 }
 
-function closeCaregiverPanel() {
+function closeCaregiverPanel(options = {}) {
+  if (caregiverPanel.hidden) {
+    return;
+  }
+
+  if (caregiverHistoryOpen && !options.fromHistory) {
+    window.history.back();
+    return;
+  }
+
   caregiverPanel.hidden = true;
+  caregiverHistoryOpen = false;
   setStatus("Caregiver settings closed.");
   speak("Closed.");
 }
@@ -266,8 +283,18 @@ function openCurrentVideoInYouTube() {
     return;
   }
 
-  const url = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  const currentSeconds = getCurrentVideoSeconds();
+  const timeParam = currentSeconds > 0 ? `&t=${currentSeconds}s` : "";
+  const url = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}${timeParam}`;
   window.open(url, "_blank", "noopener");
+}
+
+function getCurrentVideoSeconds() {
+  if (playerReady && player && typeof player.getCurrentTime === "function") {
+    return Math.max(0, Math.floor(player.getCurrentTime()));
+  }
+
+  return 0;
 }
 
 function getCurrentVideoId() {
@@ -367,6 +394,17 @@ controlButtons.forEach((button) => {
 
 caregiverOpenYoutubeButton.addEventListener("click", openCurrentVideoInYouTube);
 caregiverCloseButton.addEventListener("click", closeCaregiverPanel);
+caregiverPanel.addEventListener("click", (event) => {
+  if (event.target === caregiverPanel) {
+    closeCaregiverPanel();
+  }
+});
+
+window.addEventListener("popstate", () => {
+  if (!caregiverPanel.hidden) {
+    closeCaregiverPanel({ fromHistory: true });
+  }
+});
 
 document.addEventListener("touchstart", (event) => {
   const touch = event.changedTouches[0];

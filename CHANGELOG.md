@@ -25,6 +25,8 @@
 - Added `TEST_CHECKLIST_V2_PLAYLIST.md` for testing playlist behavior, queue navigation, and audio-novel use cases.
 - Added caregiver settings opened by triple-tapping Status.
 - Added a caregiver action to open the current video in YouTube.
+- Added caregiver panel dismissal by tapping outside the panel or pressing Android/browser Back.
+- Updated `Open Current Video In YouTube` to include the current playback timestamp using YouTube's `t=` URL parameter.
 
 ### Fixed
 

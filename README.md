@@ -63,6 +63,8 @@ Triple tap the Status control to open caregiver settings. The first caregiver ac
 
 This is meant as an escape hatch for checking channels, comments, or new audio-novel uploads without adding that complexity to the main blind-user interface.
 
+The caregiver panel can be closed with the Close button, by tapping outside the panel, or by pressing the Android/browser Back button. Opening the current video includes the current playback time when available.
+
 ## Portrait Phone Behavior
 
 The prototype is designed for portrait use first. The top part of the screen shows the current state, and the lower area is split into four large touch zones.
