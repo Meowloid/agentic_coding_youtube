@@ -224,15 +224,13 @@ function goHome() {
   hasStarted = false;
   isPlaying = false;
 
-  if (PLAYER_CONFIG.playlistId && typeof player.loadPlaylist === "function") {
-    player.loadPlaylist({ list: PLAYER_CONFIG.playlistId, index: 0, startSeconds: 0 });
-    player.pauseVideo();
-  } else if (PLAYER_CONFIG.videoId && typeof player.loadVideoById === "function") {
-    player.loadVideoById({ videoId: PLAYER_CONFIG.videoId, startSeconds: 0 });
-    player.pauseVideo();
+  if (PLAYER_CONFIG.playlistId && typeof player.cuePlaylist === "function") {
+    player.cuePlaylist({ list: PLAYER_CONFIG.playlistId, index: 0, startSeconds: 0 });
+  } else if (PLAYER_CONFIG.videoId && typeof player.cueVideoById === "function") {
+    player.cueVideoById({ videoId: PLAYER_CONFIG.videoId, startSeconds: 0 });
   }
 
-  setStatus("Home. Starting source reset.");
+  setStatus("Home. Starting source ready.");
   speak("Home.");
 }
 

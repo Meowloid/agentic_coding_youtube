@@ -28,6 +28,7 @@
 - Added caregiver panel dismissal by tapping outside the panel or pressing Android/browser Back.
 - Updated `Open Current Video In YouTube` to include the current playback timestamp using YouTube's `t=` URL parameter.
 - Added triple-tap Play as Home/reset, returning to the starting playlist or configured video.
+- Changed Home/reset to cue the starting source without immediately starting playback.
 
 ### Fixed
 
