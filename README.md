@@ -105,8 +105,17 @@ After changing `config.js`, refresh the browser page. The server does not need t
 
 ## Testing
 
-Use `TEST_CHECKLIST.md` to record what happens on desktop and phone. The most important early signals are whether playback starts, whether ads appear, and whether long-press speech feels reliable.
+Use `TEST_CHECKLIST.md` for single-video testing and `TEST_CHECKLIST_V2_PLAYLIST.md` for playlist testing. The most important early signals are whether playback starts, whether ads appear, whether long-press speech feels reliable, and whether Home/caregiver gestures recover cleanly from mistakes.
 
 ## Native Android Later
 
-If this interaction works for her, the next step is a native Android prototype using Kotlin or Java. Native Android should give us better control over TTS, lifecycle behavior, and device-level accessibility.
+If this interaction works for her, the next step is a native Android prototype using Kotlin or Java. Native Android should give us better control over:
+
+- TTS language and interruption behavior.
+- Gesture detection.
+- Android Back behavior.
+- Fullscreen/kiosk-style presentation.
+- Device-level accessibility settings.
+- YouTube handoff through Android intents or WebView experiments.
+
+The Android version should preserve the current tested behavior before adding new features.

@@ -67,6 +67,19 @@ window.ACCESSIBLE_PLAYER_CONFIG = {
 - Taps are not mistaken for swipes: y
 - Portrait layout feels usable: y
 
+## Home And Caregiver Retest
+
+- Triple tap Status opens caregiver settings:
+- Final triple tap does not immediately open YouTube:
+- Final triple tap does not immediately close caregiver settings:
+- Tapping outside caregiver settings closes it:
+- Android/browser Back closes caregiver settings:
+- Open Current Video In YouTube opens the correct video:
+- Open Current Video In YouTube includes current timestamp:
+- Triple tap Play returns Home:
+- Home cues the starting source without autoplay:
+- Home does not announce stale "Playing" title:
+
 ## Caregiver Observations
 
 - Easy to change playlist ID: maybe? i'm alright with it, but i think i may wanna expand it to a general playlist/recently uploaded from a bunch of curated channels

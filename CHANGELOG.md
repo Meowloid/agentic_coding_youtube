@@ -48,6 +48,7 @@
 ### Documented
 
 - Added a future caregiver/settings story to the feasibility notes, including an "Open current video in YouTube" escape hatch for checking channels and new audio novel uploads.
+- Updated README and playlist checklist to reflect current Home/caregiver behavior before native Android work.
 
 ### Notes
 
