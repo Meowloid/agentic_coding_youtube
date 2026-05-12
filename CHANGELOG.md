@@ -32,6 +32,7 @@
 - Suppressed late YouTube `PLAYING` events after Home/reset so triple-tap Play does not announce a stale title.
 - Added initial native Android project shell under `android/`.
 - Tightened the native Android shell layout so the status panel avoids the system status bar and takes less vertical space.
+- Added a native caregiver settings dialog opened by triple-tapping Status instead of immediately launching YouTube.
 
 ### Fixed
 

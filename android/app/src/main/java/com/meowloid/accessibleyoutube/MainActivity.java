@@ -1,8 +1,10 @@
 package com.meowloid.accessibleyoutube;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,7 +16,6 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -30,6 +31,7 @@ public class MainActivity extends Activity {
     private TextToSpeech tts;
     private TextView titleText;
     private TextView statusText;
+    private Dialog caregiverDialog;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
 
@@ -177,7 +179,7 @@ public class MainActivity extends Activity {
 
     private void handleStatus() {
         if (registerTripleTap(statusTaps)) {
-            openCaregiverVideo();
+            openCaregiverDialog();
             return;
         }
 
@@ -196,11 +198,83 @@ public class MainActivity extends Activity {
     }
 
     private void goHome() {
+        closeCaregiverDialog();
         setStatus("Home. Starting source ready.");
         speak("Home.");
     }
 
+    private void openCaregiverDialog() {
+        if (caregiverDialog != null && caregiverDialog.isShowing()) {
+            return;
+        }
+
+        caregiverDialog = new Dialog(this);
+        caregiverDialog.setContentView(buildCaregiverDialogContent());
+        caregiverDialog.setCanceledOnTouchOutside(true);
+
+        Window dialogWindow = caregiverDialog.getWindow();
+        if (dialogWindow != null) {
+            dialogWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        caregiverDialog.setOnDismissListener(dialog -> {
+            setStatus("Caregiver settings closed.");
+            speak("Closed.");
+        });
+
+        caregiverDialog.show();
+        setStatus("Caregiver settings opened.");
+        speak("Caregiver settings.");
+    }
+
+    private View buildCaregiverDialogContent() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(20));
+        panel.setBackgroundColor(Color.rgb(17, 17, 17));
+
+        TextView heading = new TextView(this);
+        heading.setText("Caregiver Settings");
+        heading.setTextColor(Color.WHITE);
+        heading.setTextSize(24);
+        heading.setGravity(Gravity.START);
+        panel.addView(heading);
+
+        Button openYouTube = caregiverButton("Open Current Video In YouTube");
+        openYouTube.setOnClickListener(view -> openCaregiverVideo());
+        panel.addView(openYouTube);
+
+        Button close = caregiverButton("Close");
+        close.setOnClickListener(view -> closeCaregiverDialog());
+        panel.addView(close);
+
+        return panel;
+    }
+
+    private Button caregiverButton(String label) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextSize(18);
+        button.setAllCaps(false);
+        button.setTextColor(Color.rgb(5, 5, 5));
+        button.setBackgroundColor(Color.WHITE);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(58)
+        );
+        params.topMargin = dp(14);
+        button.setLayoutParams(params);
+        return button;
+    }
+
+    private void closeCaregiverDialog() {
+        if (caregiverDialog != null && caregiverDialog.isShowing()) {
+            caregiverDialog.dismiss();
+        }
+    }
+
     private void openCaregiverVideo() {
+        closeCaregiverDialog();
         setStatus("Opening YouTube.");
         speak("Opening YouTube.");
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + TEST_VIDEO_ID));
