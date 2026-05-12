@@ -109,7 +109,11 @@ Use `TEST_CHECKLIST.md` for single-video testing and `TEST_CHECKLIST_V2_PLAYLIST
 
 ## Native Android Later
 
-If this interaction works for her, the next step is a native Android prototype using Kotlin or Java. Native Android should give us better control over:
+The native Android prototype now lives in `android/`.
+
+Open the `android` folder in Android Studio when working on the native app.
+
+Native Android should give us better control over:
 
 - TTS language and interruption behavior.
 - Gesture detection.

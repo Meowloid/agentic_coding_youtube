@@ -1,0 +1,244 @@
+package com.meowloid.accessibleyoutube;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.speech.tts.TextToSpeech;
+import android.view.GestureDetector;
+import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.View;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import java.util.ArrayDeque;
+import java.util.Locale;
+
+public class MainActivity extends Activity {
+    private static final long LONG_PRESS_MS = 750;
+    private static final long TRIPLE_TAP_MS = 900;
+    private static final String TEST_VIDEO_ID = "rKd-Bmr7e_k";
+
+    private TextToSpeech tts;
+    private TextView titleText;
+    private TextView statusText;
+    private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
+    private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.US);
+                speak("Ready. Long press any area for help.");
+            }
+        });
+
+        setContentView(buildLayout());
+    }
+
+    private View buildLayout() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.rgb(5, 5, 5));
+
+        LinearLayout statusPanel = new LinearLayout(this);
+        statusPanel.setOrientation(LinearLayout.VERTICAL);
+        statusPanel.setPadding(24, 20, 24, 20);
+        statusPanel.setBackgroundColor(Color.rgb(17, 17, 17));
+
+        titleText = new TextView(this);
+        titleText.setText("Prototype Android Shell");
+        titleText.setTextColor(Color.WHITE);
+        titleText.setTextSize(24);
+        titleText.setGravity(Gravity.START);
+
+        statusText = new TextView(this);
+        statusText.setText("Preparing controls.");
+        statusText.setTextColor(Color.WHITE);
+        statusText.setTextSize(18);
+        statusText.setPadding(0, 8, 0, 0);
+
+        statusPanel.addView(titleText);
+        statusPanel.addView(statusText);
+        root.addView(statusPanel, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(140)
+        ));
+
+        GridLayout controls = new GridLayout(this);
+        controls.setColumnCount(2);
+        controls.setRowCount(2);
+
+        controls.addView(controlButton("Play", "Play. Starts playback.", this::handlePlay));
+        controls.addView(controlButton("Status", "Status. Speaks what is currently happening.", this::handleStatus));
+        controls.addView(controlButton("Previous", "Previous. Goes back.", this::handlePrevious));
+        controls.addView(controlButton("Next", "Next. Goes forward.", this::handleNext));
+
+        root.addView(controls, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        ));
+
+        return root;
+    }
+
+    private Button controlButton(String label, String help, Runnable action) {
+        Button button = new Button(this);
+        button.setText(label);
+        button.setTextSize(28);
+        button.setTextColor(Color.WHITE);
+        button.setBackgroundColor(Color.TRANSPARENT);
+        button.setAllCaps(false);
+        button.setGravity(Gravity.CENTER);
+
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = 0;
+        params.height = 0;
+        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        button.setLayoutParams(params);
+
+        GestureDetector detector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                float dx = e2.getX() - e1.getX();
+                float dy = e2.getY() - e1.getY();
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 0) {
+                        handleNext();
+                    } else {
+                        handlePrevious();
+                    }
+                } else {
+                    if (dy > 0) {
+                        speak("Play pause.");
+                    } else {
+                        handleStatus();
+                    }
+                }
+
+                return true;
+            }
+        });
+
+        Handler handler = new Handler(Looper.getMainLooper());
+        final boolean[] longPressTriggered = {false};
+        final Runnable longPressRunnable = () -> {
+            longPressTriggered[0] = true;
+            speak(help);
+            setStatus(help);
+        };
+
+        button.setOnTouchListener((view, event) -> {
+            detector.onTouchEvent(event);
+
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                longPressTriggered[0] = false;
+                handler.postDelayed(longPressRunnable, LONG_PRESS_MS);
+            } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                handler.removeCallbacks(longPressRunnable);
+                if (!longPressTriggered[0]) {
+                    action.run();
+                }
+            } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
+                handler.removeCallbacks(longPressRunnable);
+            }
+            return true;
+        });
+
+        return button;
+    }
+
+    private void handlePlay() {
+        if (registerTripleTap(playTaps)) {
+            goHome();
+            return;
+        }
+
+        setStatus("Starting playback.");
+        speak("Starting playback.");
+    }
+
+    private void handleStatus() {
+        if (registerTripleTap(statusTaps)) {
+            openCaregiverVideo();
+            return;
+        }
+
+        setStatus("Home. Android shell ready.");
+        speak("Home. Android shell ready.");
+    }
+
+    private void handlePrevious() {
+        setStatus("Previous.");
+        speak("Previous.");
+    }
+
+    private void handleNext() {
+        setStatus("Next.");
+        speak("Next.");
+    }
+
+    private void goHome() {
+        setStatus("Home. Starting source ready.");
+        speak("Home.");
+    }
+
+    private void openCaregiverVideo() {
+        setStatus("Opening YouTube.");
+        speak("Opening YouTube.");
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + TEST_VIDEO_ID));
+        startActivity(intent);
+    }
+
+    private boolean registerTripleTap(ArrayDeque<Long> taps) {
+        long now = System.currentTimeMillis();
+        while (!taps.isEmpty() && now - taps.peekFirst() > TRIPLE_TAP_MS) {
+            taps.removeFirst();
+        }
+        taps.addLast(now);
+
+        if (taps.size() >= 3) {
+            taps.clear();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void setStatus(String message) {
+        statusText.setText(message);
+    }
+
+    private void speak(String message) {
+        if (tts != null) {
+            tts.stop();
+            tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "status");
+        }
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
+        super.onDestroy();
+    }
+}
