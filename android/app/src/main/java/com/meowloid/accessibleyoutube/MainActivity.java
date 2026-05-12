@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.view.Window;
 import android.view.GestureDetector;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -35,6 +36,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Window window = getWindow();
+        window.setStatusBarColor(Color.rgb(5, 5, 5));
+        window.setNavigationBarColor(Color.rgb(5, 5, 5));
 
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
@@ -53,26 +57,26 @@ public class MainActivity extends Activity {
 
         LinearLayout statusPanel = new LinearLayout(this);
         statusPanel.setOrientation(LinearLayout.VERTICAL);
-        statusPanel.setPadding(24, 20, 24, 20);
+        statusPanel.setPadding(24, getStatusBarHeight() + dp(10), 24, dp(12));
         statusPanel.setBackgroundColor(Color.rgb(17, 17, 17));
 
         titleText = new TextView(this);
         titleText.setText("Prototype Android Shell");
         titleText.setTextColor(Color.WHITE);
-        titleText.setTextSize(24);
+        titleText.setTextSize(22);
         titleText.setGravity(Gravity.START);
 
         statusText = new TextView(this);
         statusText.setText("Preparing controls.");
         statusText.setTextColor(Color.WHITE);
-        statusText.setTextSize(18);
-        statusText.setPadding(0, 8, 0, 0);
+        statusText.setTextSize(16);
+        statusText.setPadding(0, dp(6), 0, 0);
 
         statusPanel.addView(titleText);
         statusPanel.addView(statusText);
         root.addView(statusPanel, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(140)
+                getStatusBarHeight() + dp(104)
         ));
 
         GridLayout controls = new GridLayout(this);
@@ -96,7 +100,7 @@ public class MainActivity extends Activity {
     private Button controlButton(String label, String help, Runnable action) {
         Button button = new Button(this);
         button.setText(label);
-        button.setTextSize(28);
+        button.setTextSize(24);
         button.setTextColor(Color.WHITE);
         button.setBackgroundColor(Color.TRANSPARENT);
         button.setAllCaps(false);
@@ -231,6 +235,14 @@ public class MainActivity extends Activity {
 
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density);
+    }
+
+    private int getStatusBarHeight() {
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            return getResources().getDimensionPixelSize(resourceId);
+        }
+        return 0;
     }
 
     @Override
