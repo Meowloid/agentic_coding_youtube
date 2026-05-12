@@ -26,12 +26,14 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
     private static final long TRIPLE_TAP_MS = 900;
+    private static final long CAREGIVER_OPEN_GUARD_MS = 500;
     private static final String TEST_VIDEO_ID = "rKd-Bmr7e_k";
 
     private TextToSpeech tts;
     private TextView titleText;
     private TextView statusText;
     private Dialog caregiverDialog;
+    private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
 
@@ -223,6 +225,7 @@ public class MainActivity extends Activity {
         });
 
         caregiverDialog.show();
+        caregiverOpenedAt = System.currentTimeMillis();
         setStatus("Caregiver settings opened.");
         speak("Caregiver settings.");
     }
@@ -241,11 +244,21 @@ public class MainActivity extends Activity {
         panel.addView(heading);
 
         Button openYouTube = caregiverButton("Open Current Video In YouTube");
-        openYouTube.setOnClickListener(view -> openCaregiverVideo());
+        openYouTube.setOnClickListener(view -> {
+            if (caregiverGuardActive()) {
+                return;
+            }
+            openCaregiverVideo();
+        });
         panel.addView(openYouTube);
 
         Button close = caregiverButton("Close");
-        close.setOnClickListener(view -> closeCaregiverDialog());
+        close.setOnClickListener(view -> {
+            if (caregiverGuardActive()) {
+                return;
+            }
+            closeCaregiverDialog();
+        });
         panel.addView(close);
 
         return panel;
@@ -271,6 +284,10 @@ public class MainActivity extends Activity {
         if (caregiverDialog != null && caregiverDialog.isShowing()) {
             caregiverDialog.dismiss();
         }
+    }
+
+    private boolean caregiverGuardActive() {
+        return System.currentTimeMillis() - caregiverOpenedAt < CAREGIVER_OPEN_GUARD_MS;
     }
 
     private void openCaregiverVideo() {

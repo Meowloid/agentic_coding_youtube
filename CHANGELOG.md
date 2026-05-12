@@ -33,6 +33,7 @@
 - Added initial native Android project shell under `android/`.
 - Tightened the native Android shell layout so the status panel avoids the system status bar and takes less vertical space.
 - Added a native caregiver settings dialog opened by triple-tapping Status instead of immediately launching YouTube.
+- Added a short native caregiver dialog tap lockout after opening to avoid accidental button activation.
 
 ### Fixed
 
