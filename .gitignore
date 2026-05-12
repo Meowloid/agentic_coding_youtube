@@ -3,3 +3,7 @@ server.out.log
 server.err.log
 Thumbs.db
 .DS_Store
+android/.gradle/
+android/.idea/
+android/app/build/
+android/local.properties
