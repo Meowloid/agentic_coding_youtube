@@ -37,6 +37,7 @@
 - Changed native Play to open the configured YouTube video/playlist through Android's normal YouTube handoff.
 - Changed the native configured source to explicit playlist mode to avoid mismatched video-plus-playlist handoff behavior.
 - Added experimental embedded YouTube WebView playback to the native Android shell, with native Play/Previous/Next/Home calling the IFrame Player API.
+- Adjusted native playlist-only WebView initialization to avoid passing an empty video ID into the YouTube iframe player.
 
 ### Fixed
 

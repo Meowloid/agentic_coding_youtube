@@ -385,6 +385,7 @@ public class MainActivity extends Activity {
     }
 
     private String buildPlayerHtml() {
+        String sourceMode = CONFIGURED_SOURCE_MODE.name();
         return "<!doctype html>"
                 + "<html><head>"
                 + "<meta name='viewport' content='width=device-width, initial-scale=1'>"
@@ -396,23 +397,27 @@ public class MainActivity extends Activity {
                 + "<script src='https://www.youtube.com/iframe_api'></script>"
                 + "<script>"
                 + "var player;"
+                + "var sourceMode='" + escapeJs(sourceMode) + "';"
                 + "var playlistId='" + escapeJs(CONFIGURED_PLAYLIST_ID) + "';"
                 + "var videoId='" + escapeJs(CONFIGURED_VIDEO_ID) + "';"
                 + "function onYouTubeIframeAPIReady(){"
-                + "  player=new YT.Player('player',{"
-                + "    height:'100%',width:'100%',videoId:videoId,"
-                + "    playerVars:{playsinline:1,controls:1,rel:0,listType:'playlist',list:playlistId},"
-                + "    events:{onReady:onReady,onStateChange:onStateChange,onError:onError}"
-                + "  });"
+                + "  var options={height:'100%',width:'100%',playerVars:{playsinline:1,controls:1,rel:0},events:{onReady:onReady,onStateChange:onStateChange,onError:onError}};"
+                + "  if(sourceMode==='VIDEO'){options.videoId=videoId;}"
+                + "  if(sourceMode==='VIDEO_IN_PLAYLIST'){options.videoId=videoId;options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
+                + "  if(sourceMode==='PLAYLIST'){options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
+                + "  player=new YT.Player('player',options);"
                 + "}"
-                + "function onReady(){AndroidPlayer.onReady();}"
+                + "function onReady(){"
+                + "  if(sourceMode==='PLAYLIST'&&player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}"
+                + "  AndroidPlayer.onReady();"
+                + "}"
                 + "function onStateChange(event){"
                 + "  var data=player.getVideoData ? player.getVideoData() : null;"
                 + "  var title=data && data.title ? data.title : '';"
                 + "  AndroidPlayer.onStateChange(event.data,title);"
                 + "}"
                 + "function onError(code){AndroidPlayer.onError(String(code));}"
-                + "function playVideo(){if(player){player.playVideo();}}"
+                + "function playVideo(){if(!player){return;} if(sourceMode==='PLAYLIST'&&player.loadPlaylist){player.loadPlaylist({list:playlistId,index:0,startSeconds:0});return;} player.playVideo();}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
                 + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
                 + "function goHome(){if(player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
@@ -454,7 +459,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void onError(String code) {
             runOnUiThread(() -> {
-                String message = "YouTube playback error " + code + ".";
+                String message = "Embedded YouTube error " + code + ". Use caregiver settings to open YouTube directly.";
                 setStatus(message);
                 speak(message);
             });
