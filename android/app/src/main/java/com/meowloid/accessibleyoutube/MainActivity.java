@@ -833,6 +833,11 @@ public class MainActivity extends Activity {
         }
 
         Uri uri = Uri.parse(normalized);
+        String channelIdQuery = uri.getQueryParameter("channel_id");
+        if (channelIdQuery != null && channelIdQuery.startsWith("UC")) {
+            return channelIdQuery;
+        }
+
         ArrayList<String> segments = new ArrayList<>(uri.getPathSegments());
         for (int i = 0; i < segments.size(); i++) {
             if ("channel".equals(segments.get(i)) && i + 1 < segments.size()) {

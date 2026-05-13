@@ -50,6 +50,7 @@
 - Added a caregiver `Refresh Recent Videos` action that loads saved channels into an embedded generated queue.
 - Added best-effort support for resolving `@handle` channel links to channel IDs, while keeping direct `/channel/UC...` links as the reliable path.
 - Added caregiver-visible recent-upload refresh diagnostics for channel resolution, feed failures, empty feeds, and videos added.
+- Added support for caregiver-pasted YouTube RSS feed URLs that already contain a `channel_id=UC...` query parameter.
 
 ### Fixed
 
