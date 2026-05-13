@@ -75,6 +75,40 @@ android/app/build/outputs/apk/release/app-release.apk
 
 Keep the `.jks` file. Android treats updates as the same app only when future APKs are signed with the same key.
 
+## Upload To GitHub Releases
+
+Do not commit APK files into Git. APKs are binary build outputs, so GitHub Releases is the right place to share them.
+
+For the current prototype, upload this file:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+Suggested release values:
+
+- Tag: `v0.1.0`
+- Title: `Accessible YouTube Player v0.1.0`
+- Asset: `app-release.apk`
+
+On GitHub:
+
+1. Open the repository page.
+2. Go to `Releases`.
+3. Choose `Draft a new release`.
+4. Create or choose tag `v0.1.0`.
+5. Upload `app-release.apk`.
+6. Publish the release.
+
+On the Android phone:
+
+1. Open the GitHub release page.
+2. Download `app-release.apk`.
+3. Allow install from the browser or file manager when Android asks.
+4. Install the APK.
+
+For future updates, keep using the same keystore and increase `versionCode` and `versionName` in `android/app/build.gradle.kts` before building a new release APK.
+
 ## Current Limitations
 
 - Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.

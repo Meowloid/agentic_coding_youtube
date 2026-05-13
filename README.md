@@ -126,4 +126,4 @@ Native Android gives us better control over:
 
 The Android version should preserve the current tested behavior before adding new features.
 
-For private APK shipping, see [android/README.md](android/README.md).
+For private APK shipping, use GitHub Releases rather than committing APK files into the repo. See [android/README.md](android/README.md).
