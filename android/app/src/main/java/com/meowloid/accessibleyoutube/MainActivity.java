@@ -27,8 +27,16 @@ public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
     private static final long TRIPLE_TAP_MS = 900;
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
-    private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
+    private static final SourceMode CONFIGURED_SOURCE_MODE = SourceMode.PLAYLIST;
+    private static final String CONFIGURED_SOURCE_NAME = "Audio novel playlist";
+    private static final String CONFIGURED_VIDEO_ID = "";
     private static final String CONFIGURED_PLAYLIST_ID = "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x";
+
+    private enum SourceMode {
+        VIDEO,
+        PLAYLIST,
+        VIDEO_IN_PLAYLIST
+    }
 
     private TextToSpeech tts;
     private TextView titleText;
@@ -66,7 +74,7 @@ public class MainActivity extends Activity {
         statusPanel.setBackgroundColor(Color.rgb(17, 17, 17));
 
         titleText = new TextView(this);
-        titleText.setText("Prototype Android Shell");
+        titleText.setText(CONFIGURED_SOURCE_NAME);
         titleText.setTextColor(Color.WHITE);
         titleText.setTextSize(22);
         titleText.setGravity(Gravity.START);
@@ -185,8 +193,8 @@ public class MainActivity extends Activity {
             return;
         }
 
-        setStatus("Home. Android shell ready.");
-        speak("Home. Android shell ready.");
+        setStatus("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
+        speak("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
     }
 
     private void handlePrevious() {
@@ -201,7 +209,7 @@ public class MainActivity extends Activity {
 
     private void goHome() {
         closeCaregiverDialog();
-        setStatus("Home. Starting source ready.");
+        setStatus("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
         speak("Home.");
     }
 
@@ -299,24 +307,25 @@ public class MainActivity extends Activity {
     }
 
     private Uri buildConfiguredSourceUri() {
-        Uri.Builder builder = Uri.parse("https://www.youtube.com/watch").buildUpon();
-
-        if (!CONFIGURED_VIDEO_ID.isEmpty()) {
-            builder.appendQueryParameter("v", CONFIGURED_VIDEO_ID);
+        switch (CONFIGURED_SOURCE_MODE) {
+            case VIDEO:
+                return Uri.parse("https://www.youtube.com/watch")
+                        .buildUpon()
+                        .appendQueryParameter("v", CONFIGURED_VIDEO_ID)
+                        .build();
+            case VIDEO_IN_PLAYLIST:
+                return Uri.parse("https://www.youtube.com/watch")
+                        .buildUpon()
+                        .appendQueryParameter("v", CONFIGURED_VIDEO_ID)
+                        .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
+                        .build();
+            case PLAYLIST:
+            default:
+                return Uri.parse("https://www.youtube.com/playlist")
+                        .buildUpon()
+                        .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
+                        .build();
         }
-
-        if (!CONFIGURED_PLAYLIST_ID.isEmpty()) {
-            builder.appendQueryParameter("list", CONFIGURED_PLAYLIST_ID);
-        }
-
-        if (CONFIGURED_VIDEO_ID.isEmpty() && !CONFIGURED_PLAYLIST_ID.isEmpty()) {
-            return Uri.parse("https://www.youtube.com/playlist")
-                    .buildUpon()
-                    .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
-                    .build();
-        }
-
-        return builder.build();
     }
 
     private boolean registerTripleTap(ArrayDeque<Long> taps) {

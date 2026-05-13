@@ -13,6 +13,7 @@ It intentionally starts small:
 - Triple tap Status for caregiver settings.
 - Play opens the configured YouTube source through the normal YouTube app/browser handoff.
 - Caregiver settings can also open the configured YouTube source.
+- The native source mode is currently playlist-only for the audio-novel use case.
 
 The first native goal is to validate Android touch/TTS behavior on a real phone before embedding or controlling YouTube playback directly.
 
@@ -38,5 +39,5 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ## Current Limitations
 
 - No embedded YouTube playback yet.
-- The configured source is currently hardcoded in `MainActivity.java`.
+- The configured source mode and IDs are currently hardcoded in `MainActivity.java`.
 - Playlist/source config is still in the browser prototype.

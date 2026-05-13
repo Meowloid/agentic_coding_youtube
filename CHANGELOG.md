@@ -35,6 +35,7 @@
 - Added a native caregiver settings dialog opened by triple-tapping Status instead of immediately launching YouTube.
 - Added a short native caregiver dialog tap lockout after opening to avoid accidental button activation.
 - Changed native Play to open the configured YouTube video/playlist through Android's normal YouTube handoff.
+- Changed the native configured source to explicit playlist mode to avoid mismatched video-plus-playlist handoff behavior.
 
 ### Fixed
 
