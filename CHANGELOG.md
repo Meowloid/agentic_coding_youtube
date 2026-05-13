@@ -41,6 +41,7 @@
 - Switched the native WebView embed experiment to `youtube-nocookie.com` with an explicit origin and video-in-playlist initialization.
 - Wired native downward swipe to toggle embedded play/pause.
 - Split native Status TTS so interface text uses English while the current video title uses Indonesian.
+- Fixed native touch handling so swipes no longer also trigger the underlying button tap.
 
 ### Fixed
 

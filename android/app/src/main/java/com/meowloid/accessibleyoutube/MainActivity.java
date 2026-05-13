@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
     private static final long TRIPLE_TAP_MS = 900;
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
+    private static final int TAP_SLOP_DP = 18;
     private static final SourceMode CONFIGURED_SOURCE_MODE = SourceMode.VIDEO_IN_PLAYLIST;
     private static final String CONFIGURED_SOURCE_NAME = "Audio novel playlist";
     private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
@@ -165,9 +166,16 @@ public class MainActivity extends Activity {
         params.rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
         button.setLayoutParams(params);
 
+        Handler handler = new Handler(Looper.getMainLooper());
+        final boolean[] longPressTriggered = {false};
+        final boolean[] flingTriggered = {false};
+        final float[] startX = {0f};
+        final float[] startY = {0f};
+
         GestureDetector detector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                flingTriggered[0] = true;
                 float dx = e2.getX() - e1.getX();
                 float dy = e2.getY() - e1.getY();
 
@@ -189,8 +197,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        Handler handler = new Handler(Looper.getMainLooper());
-        final boolean[] longPressTriggered = {false};
         final Runnable longPressRunnable = () -> {
             longPressTriggered[0] = true;
             speak(help);
@@ -202,10 +208,17 @@ public class MainActivity extends Activity {
 
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 longPressTriggered[0] = false;
+                flingTriggered[0] = false;
+                startX[0] = event.getX();
+                startY[0] = event.getY();
                 handler.postDelayed(longPressRunnable, LONG_PRESS_MS);
             } else if (event.getAction() == MotionEvent.ACTION_UP) {
                 handler.removeCallbacks(longPressRunnable);
-                if (!longPressTriggered[0]) {
+                float dx = event.getX() - startX[0];
+                float dy = event.getY() - startY[0];
+                boolean movedBeyondTap = Math.hypot(dx, dy) > dp(TAP_SLOP_DP);
+
+                if (!longPressTriggered[0] && !flingTriggered[0] && !movedBeyondTap) {
                     action.run();
                 }
             } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
