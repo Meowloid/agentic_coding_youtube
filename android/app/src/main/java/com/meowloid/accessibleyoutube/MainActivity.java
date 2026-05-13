@@ -120,6 +120,11 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static class RefreshResult {
+        final ArrayList<VideoItem> videos = new ArrayList<>();
+        String report = "";
+    }
+
     private TextToSpeech tts;
     private TextView titleText;
     private TextView statusText;
@@ -136,6 +141,7 @@ public class MainActivity extends Activity {
     private int currentVideoSeconds = 0;
     private ArrayList<String> curatedChannelLinks = new ArrayList<>();
     private ArrayList<VideoItem> generatedRecentVideos = new ArrayList<>();
+    private String latestRefreshReport = "No refresh run yet.";
     private long caregiverOpenedAt = 0L;
     private boolean refreshingUploads = false;
     private boolean playAfterRefresh = false;
@@ -533,6 +539,13 @@ public class MainActivity extends Activity {
         note.setPadding(0, dp(6), 0, dp(10));
         panel.addView(note);
 
+        TextView report = new TextView(this);
+        report.setText("Last refresh:\n" + latestRefreshReport);
+        report.setTextColor(Color.WHITE);
+        report.setTextSize(14);
+        report.setPadding(0, 0, 0, dp(10));
+        panel.addView(report);
+
         Button refresh = caregiverButton("Refresh Recent Videos");
         refresh.setOnClickListener(view -> {
             if (channelDialog != null) {
@@ -702,32 +715,27 @@ public class MainActivity extends Activity {
         speak("Refreshing recent videos.");
 
         new Thread(() -> {
-            try {
-                ArrayList<VideoItem> videos = fetchRecentVideos(curatedChannelLinks);
-                runOnUiThread(() -> finishRecentVideoRefresh(videos, null));
-            } catch (Exception error) {
-                runOnUiThread(() -> finishRecentVideoRefresh(new ArrayList<>(), error));
-            }
+            RefreshResult result = fetchRecentVideos(curatedChannelLinks);
+            runOnUiThread(() -> finishRecentVideoRefresh(result));
         }).start();
     }
 
-    private void finishRecentVideoRefresh(ArrayList<VideoItem> videos, Exception error) {
+    private void finishRecentVideoRefresh(RefreshResult result) {
         refreshingUploads = false;
+        latestRefreshReport = result.report;
 
-        if (videos.isEmpty()) {
+        if (result.videos.isEmpty()) {
             playAfterRefresh = false;
-            String message = error == null
-                    ? "No recent videos found. Check the saved channel links."
-                    : "Could not refresh recent videos. Check network and channel links.";
+            String message = "No recent videos found. Open Manage Channels for details.";
             setStatus(message);
             speak(message);
             return;
         }
 
-        generatedRecentVideos = videos;
+        generatedRecentVideos = result.videos;
         currentSourceIndex = 1;
-        currentTitle = videos.get(0).title;
-        currentVideoId = videos.get(0).id;
+        currentTitle = result.videos.get(0).title;
+        currentVideoId = result.videos.get(0).id;
         currentVideoSeconds = 0;
         titleText.setText(currentTitle);
 
@@ -740,34 +748,82 @@ public class MainActivity extends Activity {
                 null
         );
 
-        setStatus("Recent videos ready. " + videos.size() + " videos.");
+        setStatus("Recent videos ready. " + result.videos.size() + " videos.");
         speak("Recent videos ready.");
     }
 
-    private ArrayList<VideoItem> fetchRecentVideos(ArrayList<String> channelLinks) throws Exception {
-        ArrayList<VideoItem> videos = new ArrayList<>();
+    private RefreshResult fetchRecentVideos(ArrayList<String> channelLinks) {
+        RefreshResult result = new RefreshResult();
         Set<String> seenVideoIds = new LinkedHashSet<>();
+        StringBuilder report = new StringBuilder();
 
         for (String link : channelLinks) {
             if (link.toLowerCase(Locale.US).contains("replace")) {
-                continue;
-            }
-            String channelId = resolveChannelId(link);
-            if (channelId == null || channelId.isEmpty()) {
+                report.append("Skipped placeholder: ").append(link).append("\n");
                 continue;
             }
 
-            for (VideoItem video : fetchChannelFeed(channelId)) {
+            String channelId;
+            try {
+                channelId = resolveChannelId(link);
+            } catch (Exception error) {
+                report.append("Could not resolve: ")
+                        .append(link)
+                        .append(" (")
+                        .append(error.getClass().getSimpleName())
+                        .append(")\n");
+                continue;
+            }
+
+            if (channelId == null || channelId.isEmpty()) {
+                report.append("Could not find channel ID: ").append(link).append("\n");
+                continue;
+            }
+
+            ArrayList<VideoItem> feedVideos;
+            try {
+                feedVideos = fetchChannelFeed(channelId);
+            } catch (Exception error) {
+                report.append("Feed failed: ")
+                        .append(channelId)
+                        .append(" from ")
+                        .append(link)
+                        .append(" (")
+                        .append(error.getClass().getSimpleName())
+                        .append(")\n");
+                continue;
+            }
+
+            if (feedVideos.isEmpty()) {
+                report.append("Zero videos: ").append(channelId).append("\n");
+                continue;
+            }
+
+            int before = result.videos.size();
+            for (VideoItem video : feedVideos) {
                 if (seenVideoIds.add(video.id)) {
-                    videos.add(video);
-                    if (videos.size() >= MAX_RECENT_UPLOADS) {
-                        return videos;
+                    result.videos.add(video);
+                    if (result.videos.size() >= MAX_RECENT_UPLOADS) {
+                        report.append("Added ")
+                                .append(result.videos.size() - before)
+                                .append(" from ")
+                                .append(channelId)
+                                .append(". Reached queue limit.\n");
+                        result.report = report.toString().trim();
+                        return result;
                     }
                 }
             }
+
+            report.append("Added ")
+                    .append(result.videos.size() - before)
+                    .append(" from ")
+                    .append(channelId)
+                    .append("\n");
         }
 
-        return videos;
+        result.report = report.length() == 0 ? "No channel links checked." : report.toString().trim();
+        return result;
     }
 
     private String resolveChannelId(String link) throws Exception {
@@ -827,6 +883,12 @@ public class MainActivity extends Activity {
         connection.setReadTimeout(12_000);
         connection.setRequestProperty("User-Agent", "AccessibleYouTubePrototype/0.1");
 
+        int responseCode = connection.getResponseCode();
+        if (responseCode >= 400) {
+            connection.disconnect();
+            throw new IllegalStateException("HTTP " + responseCode);
+        }
+
         try (InputStream input = connection.getInputStream()) {
             XmlPullParser parser = Xml.newPullParser();
             parser.setInput(input, null);
@@ -871,6 +933,12 @@ public class MainActivity extends Activity {
         connection.setConnectTimeout(12_000);
         connection.setReadTimeout(12_000);
         connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+        int responseCode = connection.getResponseCode();
+        if (responseCode >= 400) {
+            connection.disconnect();
+            throw new IllegalStateException("HTTP " + responseCode);
+        }
 
         try (InputStream input = connection.getInputStream();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
