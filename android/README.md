@@ -51,3 +51,4 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 - Channel links are stored in Android app storage through the caregiver Manage Channels dialog.
 - Direct `/channel/UC...` YouTube links, raw `UC...` IDs, and YouTube RSS feed URLs with `channel_id=UC...` are the most reliable channel inputs. `@handle` links use a best-effort lookup and may fail if YouTube changes its page markup.
 - Recent uploads are generated from YouTube RSS feeds. This avoids an API key, but it is still network-dependent.
+- Refresh diagnostics include exception messages, so HTTP/network failures should be visible in the channel manager.

@@ -770,7 +770,7 @@ public class MainActivity extends Activity {
                 report.append("Could not resolve: ")
                         .append(link)
                         .append(" (")
-                        .append(error.getClass().getSimpleName())
+                        .append(describeError(error))
                         .append(")\n");
                 continue;
             }
@@ -789,7 +789,7 @@ public class MainActivity extends Activity {
                         .append(" from ")
                         .append(link)
                         .append(" (")
-                        .append(error.getClass().getSimpleName())
+                        .append(describeError(error))
                         .append(")\n");
                 continue;
             }
@@ -848,8 +848,18 @@ public class MainActivity extends Activity {
             }
         }
 
-        String page = fetchText(normalized, 260_000);
-        return findChannelId(page);
+        String channelId = findChannelId(fetchText(normalized, 1_000_000));
+        if (!channelId.isEmpty()) {
+            return channelId;
+        }
+
+        String aboutUrl = normalized.endsWith("/about") ? normalized : normalized + "/about";
+        channelId = findChannelId(fetchText(aboutUrl, 1_000_000));
+        if (!channelId.isEmpty()) {
+            return channelId;
+        }
+
+        return "";
     }
 
     private String normalizeChannelLink(String link) {
@@ -865,9 +875,12 @@ public class MainActivity extends Activity {
 
     private String findChannelId(String page) {
         Pattern[] patterns = {
-                Pattern.compile("\"channelId\"\\s*:\\s*\"(UC[^\"]+)\""),
-                Pattern.compile("youtube\\.com/channel/(UC[^\"]+)"),
-                Pattern.compile("externalId\"\\s*:\\s*\"(UC[^\"]+)\"")
+                Pattern.compile("\"channelId\"\\s*:\\s*\"(UC[\\w-]{20,})\""),
+                Pattern.compile("\"externalId\"\\s*:\\s*\"(UC[\\w-]{20,})\""),
+                Pattern.compile("\"browseId\"\\s*:\\s*\"(UC[\\w-]{20,})\""),
+                Pattern.compile("youtube\\.com/channel/(UC[\\w-]{20,})"),
+                Pattern.compile("channel_id=(UC[\\w-]{20,})"),
+                Pattern.compile("channel_id%3D(UC[\\w-]{20,})")
         };
 
         for (Pattern pattern : patterns) {
@@ -886,7 +899,7 @@ public class MainActivity extends Activity {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setConnectTimeout(12_000);
         connection.setReadTimeout(12_000);
-        connection.setRequestProperty("User-Agent", "AccessibleYouTubePrototype/0.1");
+        applyBrowserHeaders(connection, "application/atom+xml,application/xml,text/xml,*/*");
 
         int responseCode = connection.getResponseCode();
         if (responseCode >= 400) {
@@ -937,7 +950,7 @@ public class MainActivity extends Activity {
         connection.setInstanceFollowRedirects(true);
         connection.setConnectTimeout(12_000);
         connection.setReadTimeout(12_000);
-        connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+        applyBrowserHeaders(connection, "text/html,application/xhtml+xml,application/xml,*/*");
 
         int responseCode = connection.getResponseCode();
         if (responseCode >= 400) {
@@ -959,6 +972,23 @@ public class MainActivity extends Activity {
         } finally {
             connection.disconnect();
         }
+    }
+
+    private void applyBrowserHeaders(HttpURLConnection connection, String accept) {
+        connection.setRequestProperty(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36"
+        );
+        connection.setRequestProperty("Accept", accept);
+        connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+    }
+
+    private String describeError(Exception error) {
+        String message = error.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            return error.getClass().getSimpleName();
+        }
+        return error.getClass().getSimpleName() + ": " + message.trim();
     }
 
     private void refreshCurrentPlaybackSnapshot() {
