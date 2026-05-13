@@ -32,18 +32,62 @@ public class MainActivity extends Activity {
     private static final long TRIPLE_TAP_MS = 900;
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
     private static final int TAP_SLOP_DP = 18;
-    private static final SourceMode CONFIGURED_SOURCE_MODE = SourceMode.VIDEO_IN_PLAYLIST;
-    private static final String CONFIGURED_SOURCE_NAME = "Audio novel playlist";
-    private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
-    private static final String CONFIGURED_PLAYLIST_ID = "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x";
     private static final String EMBED_ORIGIN = "https://www.youtube-nocookie.com";
     private static final Locale INTERFACE_LOCALE = Locale.US;
     private static final Locale TITLE_LOCALE = new Locale("id", "ID");
+    private static final Source[] SOURCES = {
+            new Source(
+                    "Audio novel playlist",
+                    SourceType.PLAYLIST,
+                    SourceMode.VIDEO_IN_PLAYLIST,
+                    "rKd-Bmr7e_k",
+                    "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x",
+                    new String[]{}
+            ),
+            new Source(
+                    "Curated channel uploads",
+                    SourceType.RECENT_UPLOADS,
+                    SourceMode.PLAYLIST,
+                    "",
+                    "",
+                    new String[]{
+                            "https://www.youtube.com/@replace-with-a-channel",
+                            "https://www.youtube.com/channel/UC_REPLACE_WITH_CHANNEL_ID"
+                    }
+            )
+    };
+
+    private enum SourceType {
+        PLAYLIST,
+        RECENT_UPLOADS
+    }
 
     private enum SourceMode {
         VIDEO,
         PLAYLIST,
         VIDEO_IN_PLAYLIST
+    }
+
+    private static class Source {
+        final String name;
+        final SourceType type;
+        final SourceMode mode;
+        final String videoId;
+        final String playlistId;
+        final String[] channelLinks;
+
+        Source(String name, SourceType type, SourceMode mode, String videoId, String playlistId, String[] channelLinks) {
+            this.name = name;
+            this.type = type;
+            this.mode = mode;
+            this.videoId = videoId;
+            this.playlistId = playlistId;
+            this.channelLinks = channelLinks;
+        }
+
+        boolean hasPlayableQueue() {
+            return !playlistId.isEmpty() || !videoId.isEmpty();
+        }
     }
 
     private TextToSpeech tts;
@@ -55,8 +99,9 @@ public class MainActivity extends Activity {
     private boolean isPlaying = false;
     private boolean openYouTubeAfterSnapshot = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private String currentTitle = CONFIGURED_SOURCE_NAME;
-    private String currentVideoId = CONFIGURED_VIDEO_ID;
+    private int currentSourceIndex = 0;
+    private String currentTitle = currentSource().name;
+    private String currentVideoId = currentSource().videoId;
     private int currentVideoSeconds = 0;
     private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
@@ -90,7 +135,7 @@ public class MainActivity extends Activity {
         statusPanel.setBackgroundColor(Color.rgb(17, 17, 17));
 
         titleText = new TextView(this);
-        titleText.setText(CONFIGURED_SOURCE_NAME);
+        titleText.setText(currentSource().name);
         titleText.setTextColor(Color.WHITE);
         titleText.setTextSize(22);
         titleText.setGravity(Gravity.START);
@@ -130,6 +175,10 @@ public class MainActivity extends Activity {
         ));
 
         return root;
+    }
+
+    private Source currentSource() {
+        return SOURCES[currentSourceIndex];
     }
 
     private WebView buildPlayerWebView() {
@@ -267,7 +316,7 @@ public class MainActivity extends Activity {
 
     private void goHome() {
         closeCaregiverDialog();
-        setStatus("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
+        setStatus("Home. " + currentSource().name + " ready.");
         speak("Home.");
         callPlayer("goHome()");
     }
@@ -276,6 +325,11 @@ public class MainActivity extends Activity {
         if (!playerReady) {
             setStatus("YouTube player is still loading.");
             speak("YouTube player is still loading.");
+            return;
+        }
+        if (!currentSource().hasPlayableQueue()) {
+            setStatus("This source needs refresh before playback.");
+            speak("This source needs refresh before playback.");
             return;
         }
 
@@ -349,6 +403,15 @@ public class MainActivity extends Activity {
         });
         panel.addView(openYouTube);
 
+        Button switchSource = caregiverButton("Switch Source");
+        switchSource.setOnClickListener(view -> {
+            if (caregiverGuardActive()) {
+                return;
+            }
+            switchSource();
+        });
+        panel.addView(switchSource);
+
         Button close = caregiverButton("Close");
         close.setOnClickListener(view -> {
             if (caregiverGuardActive()) {
@@ -388,6 +451,11 @@ public class MainActivity extends Activity {
     }
 
     private void openConfiguredSource() {
+        if (!currentSource().hasPlayableQueue()) {
+            setStatus("This source has no generated playlist yet.");
+            speak("This source has no generated playlist yet.");
+            return;
+        }
         setStatus("Opening YouTube.");
         speak("Opening YouTube.");
         openYouTubeAfterSnapshot = true;
@@ -398,6 +466,31 @@ public class MainActivity extends Activity {
                 openCurrentPlaybackInYouTube();
             }
         }, 350);
+    }
+
+    private void switchSource() {
+        currentSourceIndex = (currentSourceIndex + 1) % SOURCES.length;
+        Source source = currentSource();
+        currentTitle = source.name;
+        currentVideoId = source.videoId;
+        currentVideoSeconds = 0;
+        titleText.setText(source.name);
+
+        if (source.hasPlayableQueue()) {
+            playerReady = false;
+            playerWebView.loadDataWithBaseURL(
+                    EMBED_ORIGIN,
+                    buildPlayerHtml(),
+                    "text/html",
+                    "UTF-8",
+                    null
+            );
+            setStatus("Source changed. " + source.name + ".");
+            speak("Source changed. " + source.name + ".");
+        } else {
+            setStatus("Source changed. " + source.name + ". Refresh latest uploads is not implemented yet.");
+            speak("Source changed. Refresh latest uploads is not implemented yet.");
+        }
     }
 
     private void refreshCurrentPlaybackSnapshot() {
@@ -415,12 +508,12 @@ public class MainActivity extends Activity {
 
         if (currentVideoId != null && !currentVideoId.isEmpty()) {
             builder.appendQueryParameter("v", currentVideoId);
-        } else if (!CONFIGURED_VIDEO_ID.isEmpty()) {
-            builder.appendQueryParameter("v", CONFIGURED_VIDEO_ID);
+        } else if (!currentSource().videoId.isEmpty()) {
+            builder.appendQueryParameter("v", currentSource().videoId);
         }
 
-        if (!CONFIGURED_PLAYLIST_ID.isEmpty()) {
-            builder.appendQueryParameter("list", CONFIGURED_PLAYLIST_ID);
+        if (!currentSource().playlistId.isEmpty()) {
+            builder.appendQueryParameter("list", currentSource().playlistId);
         }
 
         if (currentVideoSeconds > 0) {
@@ -431,23 +524,24 @@ public class MainActivity extends Activity {
     }
 
     private Uri buildConfiguredSourceUri() {
-        switch (CONFIGURED_SOURCE_MODE) {
+        Source source = currentSource();
+        switch (source.mode) {
             case VIDEO:
                 return Uri.parse("https://www.youtube.com/watch")
                         .buildUpon()
-                        .appendQueryParameter("v", CONFIGURED_VIDEO_ID)
+                        .appendQueryParameter("v", source.videoId)
                         .build();
             case VIDEO_IN_PLAYLIST:
                 return Uri.parse("https://www.youtube.com/watch")
                         .buildUpon()
-                        .appendQueryParameter("v", CONFIGURED_VIDEO_ID)
-                        .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
+                        .appendQueryParameter("v", source.videoId)
+                        .appendQueryParameter("list", source.playlistId)
                         .build();
             case PLAYLIST:
             default:
                 return Uri.parse("https://www.youtube.com/playlist")
                         .buildUpon()
-                        .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
+                        .appendQueryParameter("list", source.playlistId)
                         .build();
         }
     }
@@ -459,7 +553,8 @@ public class MainActivity extends Activity {
     }
 
     private String buildPlayerHtml() {
-        String sourceMode = CONFIGURED_SOURCE_MODE.name();
+        Source source = currentSource();
+        String sourceMode = source.mode.name();
         return "<!doctype html>"
                 + "<html><head>"
                 + "<meta name='viewport' content='width=device-width, initial-scale=1'>"
@@ -472,8 +567,8 @@ public class MainActivity extends Activity {
                 + "<script>"
                 + "var player;"
                 + "var sourceMode='" + escapeJs(sourceMode) + "';"
-                + "var playlistId='" + escapeJs(CONFIGURED_PLAYLIST_ID) + "';"
-                + "var videoId='" + escapeJs(CONFIGURED_VIDEO_ID) + "';"
+                + "var playlistId='" + escapeJs(source.playlistId) + "';"
+                + "var videoId='" + escapeJs(source.videoId) + "';"
                 + "var embedOrigin='" + escapeJs(EMBED_ORIGIN) + "';"
                 + "function onYouTubeIframeAPIReady(){"
                 + "  var options={host:embedOrigin,height:'100%',width:'100%',playerVars:{playsinline:1,controls:1,rel:0,origin:embedOrigin},events:{onReady:onReady,onStateChange:onStateChange,onError:onError}};"

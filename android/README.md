@@ -16,7 +16,9 @@ It intentionally starts small:
 - Previous/Next call the embedded player.
 - Home cues the starting playlist source.
 - Caregiver settings can also open the configured YouTube source.
-- The native source mode is currently playlist-only for the audio-novel use case.
+- Caregiver settings can switch between hardcoded source slots.
+- The first source is the working audio-novel playlist.
+- The second source is a placeholder for curated channel latest uploads.
 
 The first native goal is to validate Android touch/TTS behavior on a real phone before embedding or controlling YouTube playback directly.
 
@@ -42,5 +44,5 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ## Current Limitations
 
 - Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.
-- The configured source mode and IDs are currently hardcoded in `MainActivity.java`.
-- Playlist/source config is still in the browser prototype.
+- Source slots are currently hardcoded in `MainActivity.java`.
+- The curated channel source stores channel links, but refresh/generation of recent uploads is not implemented yet.

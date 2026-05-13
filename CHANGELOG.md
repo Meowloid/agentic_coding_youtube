@@ -43,6 +43,8 @@
 - Split native Status TTS so interface text uses English while the current video title uses Indonesian.
 - Fixed native touch handling so swipes no longer also trigger the underlying button tap.
 - Updated the native caregiver YouTube escape hatch to open the current embedded video and timestamp instead of the configured starting source.
+- Added a native source list with a working playlist source and a caregiver-visible placeholder for curated channel latest uploads.
+- Added caregiver source switching as a first step toward playlist/channel source management.
 
 ### Fixed
 
