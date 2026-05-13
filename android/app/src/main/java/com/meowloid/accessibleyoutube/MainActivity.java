@@ -3,6 +3,7 @@ package com.meowloid.accessibleyoutube;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
@@ -20,11 +21,15 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
@@ -33,6 +38,9 @@ public class MainActivity extends Activity {
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
     private static final int TAP_SLOP_DP = 18;
     private static final String EMBED_ORIGIN = "https://www.youtube-nocookie.com";
+    private static final String PREFS_NAME = "accessible_youtube_prefs";
+    private static final String PREF_CHANNEL_LINKS = "channel_links";
+    private static final String CHANNEL_LINK_SEPARATOR = "\n";
     private static final Locale INTERFACE_LOCALE = Locale.US;
     private static final Locale TITLE_LOCALE = new Locale("id", "ID");
     private static final Source[] SOURCES = {
@@ -95,6 +103,7 @@ public class MainActivity extends Activity {
     private TextView statusText;
     private WebView playerWebView;
     private Dialog caregiverDialog;
+    private Dialog channelDialog;
     private boolean playerReady = false;
     private boolean isPlaying = false;
     private boolean openYouTubeAfterSnapshot = false;
@@ -103,6 +112,7 @@ public class MainActivity extends Activity {
     private String currentTitle = currentSource().name;
     private String currentVideoId = currentSource().videoId;
     private int currentVideoSeconds = 0;
+    private ArrayList<String> curatedChannelLinks = new ArrayList<>();
     private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
@@ -110,6 +120,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        curatedChannelLinks = loadChannelLinks();
         Window window = getWindow();
         window.setStatusBarColor(Color.rgb(5, 5, 5));
         window.setNavigationBarColor(Color.rgb(5, 5, 5));
@@ -412,6 +423,15 @@ public class MainActivity extends Activity {
         });
         panel.addView(switchSource);
 
+        Button manageChannels = caregiverButton("Manage Channels");
+        manageChannels.setOnClickListener(view -> {
+            if (caregiverGuardActive()) {
+                return;
+            }
+            openChannelDialog();
+        });
+        panel.addView(manageChannels);
+
         Button close = caregiverButton("Close");
         close.setOnClickListener(view -> {
             if (caregiverGuardActive()) {
@@ -444,6 +464,125 @@ public class MainActivity extends Activity {
         if (caregiverDialog != null && caregiverDialog.isShowing()) {
             caregiverDialog.dismiss();
         }
+    }
+
+    private void openChannelDialog() {
+        closeCaregiverDialog();
+
+        channelDialog = new Dialog(this);
+        channelDialog.setContentView(buildChannelDialogContent());
+        channelDialog.setCanceledOnTouchOutside(true);
+
+        Window dialogWindow = channelDialog.getWindow();
+        if (dialogWindow != null) {
+            dialogWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        channelDialog.show();
+        setStatus("Manage channels opened.");
+        speak("Manage channels.");
+    }
+
+    private View buildChannelDialogContent() {
+        ScrollView scrollView = new ScrollView(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(20));
+        panel.setBackgroundColor(Color.rgb(17, 17, 17));
+        scrollView.addView(panel);
+
+        TextView heading = new TextView(this);
+        heading.setText("Channel Links");
+        heading.setTextColor(Color.WHITE);
+        heading.setTextSize(24);
+        panel.addView(heading);
+
+        TextView note = new TextView(this);
+        note.setText("Stored for future latest-upload refresh.");
+        note.setTextColor(Color.WHITE);
+        note.setTextSize(15);
+        note.setPadding(0, dp(6), 0, dp(10));
+        panel.addView(note);
+
+        for (String link : curatedChannelLinks) {
+            TextView row = new TextView(this);
+            row.setText(link);
+            row.setTextColor(Color.WHITE);
+            row.setTextSize(14);
+            row.setPadding(0, dp(10), 0, 0);
+            panel.addView(row);
+
+            Button remove = caregiverButton("Remove");
+            remove.setOnClickListener(view -> {
+                curatedChannelLinks.remove(link);
+                saveChannelLinks();
+                if (channelDialog != null) {
+                    channelDialog.dismiss();
+                }
+                openChannelDialog();
+            });
+            panel.addView(remove);
+        }
+
+        EditText input = new EditText(this);
+        input.setHint("Paste YouTube channel URL");
+        input.setSingleLine(true);
+        input.setTextColor(Color.WHITE);
+        input.setHintTextColor(Color.LTGRAY);
+        input.setTextSize(16);
+        panel.addView(input);
+
+        Button add = caregiverButton("Add Channel Link");
+        add.setOnClickListener(view -> {
+            String link = input.getText().toString().trim();
+            if (!link.isEmpty() && !curatedChannelLinks.contains(link)) {
+                curatedChannelLinks.add(link);
+                saveChannelLinks();
+                input.setText("");
+                if (channelDialog != null) {
+                    channelDialog.dismiss();
+                }
+                openChannelDialog();
+            }
+        });
+        panel.addView(add);
+
+        Button close = caregiverButton("Close");
+        close.setOnClickListener(view -> {
+            if (channelDialog != null) {
+                channelDialog.dismiss();
+            }
+            setStatus("Manage channels closed.");
+            speak("Closed.");
+        });
+        panel.addView(close);
+
+        return scrollView;
+    }
+
+    private ArrayList<String> loadChannelLinks() {
+        SharedPreferences preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String storedLinks = preferences.getString(PREF_CHANNEL_LINKS, null);
+
+        if (storedLinks == null) {
+            return new ArrayList<>(Arrays.asList(SOURCES[1].channelLinks));
+        }
+
+        ArrayList<String> links = new ArrayList<>();
+        for (String link : storedLinks.split(CHANNEL_LINK_SEPARATOR)) {
+            String trimmed = link.trim();
+            if (!trimmed.isEmpty()) {
+                links.add(trimmed);
+            }
+        }
+        return links;
+    }
+
+    private void saveChannelLinks() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .putString(PREF_CHANNEL_LINKS, String.join(CHANNEL_LINK_SEPARATOR, curatedChannelLinks))
+                .apply();
     }
 
     private boolean caregiverGuardActive() {

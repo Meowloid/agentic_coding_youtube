@@ -45,6 +45,7 @@
 - Updated the native caregiver YouTube escape hatch to open the current embedded video and timestamp instead of the configured starting source.
 - Added a native source list with a working playlist source and a caregiver-visible placeholder for curated channel latest uploads.
 - Added caregiver source switching as a first step toward playlist/channel source management.
+- Added caregiver-managed channel link storage using Android `SharedPreferences`, with add/remove controls in the native app.
 
 ### Fixed
 
