@@ -27,7 +27,8 @@ public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
     private static final long TRIPLE_TAP_MS = 900;
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
-    private static final String TEST_VIDEO_ID = "rKd-Bmr7e_k";
+    private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
+    private static final String CONFIGURED_PLAYLIST_ID = "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x";
 
     private TextToSpeech tts;
     private TextView titleText;
@@ -87,7 +88,7 @@ public class MainActivity extends Activity {
         controls.setColumnCount(2);
         controls.setRowCount(2);
 
-        controls.addView(controlButton("Play", "Play. Starts playback.", this::handlePlay));
+        controls.addView(controlButton("Play", "Play. Opens the configured YouTube source.", this::handlePlay));
         controls.addView(controlButton("Status", "Status. Speaks what is currently happening.", this::handleStatus));
         controls.addView(controlButton("Previous", "Previous. Goes back.", this::handlePrevious));
         controls.addView(controlButton("Next", "Next. Goes forward.", this::handleNext));
@@ -175,8 +176,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        setStatus("Starting playback.");
-        speak("Starting playback.");
+        openConfiguredSource();
     }
 
     private void handleStatus() {
@@ -243,12 +243,12 @@ public class MainActivity extends Activity {
         heading.setGravity(Gravity.START);
         panel.addView(heading);
 
-        Button openYouTube = caregiverButton("Open Current Video In YouTube");
+        Button openYouTube = caregiverButton("Open Source In YouTube");
         openYouTube.setOnClickListener(view -> {
             if (caregiverGuardActive()) {
                 return;
             }
-            openCaregiverVideo();
+            openConfiguredSource();
         });
         panel.addView(openYouTube);
 
@@ -290,12 +290,33 @@ public class MainActivity extends Activity {
         return System.currentTimeMillis() - caregiverOpenedAt < CAREGIVER_OPEN_GUARD_MS;
     }
 
-    private void openCaregiverVideo() {
+    private void openConfiguredSource() {
         closeCaregiverDialog();
         setStatus("Opening YouTube.");
         speak("Opening YouTube.");
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + TEST_VIDEO_ID));
+        Intent intent = new Intent(Intent.ACTION_VIEW, buildConfiguredSourceUri());
         startActivity(intent);
+    }
+
+    private Uri buildConfiguredSourceUri() {
+        Uri.Builder builder = Uri.parse("https://www.youtube.com/watch").buildUpon();
+
+        if (!CONFIGURED_VIDEO_ID.isEmpty()) {
+            builder.appendQueryParameter("v", CONFIGURED_VIDEO_ID);
+        }
+
+        if (!CONFIGURED_PLAYLIST_ID.isEmpty()) {
+            builder.appendQueryParameter("list", CONFIGURED_PLAYLIST_ID);
+        }
+
+        if (CONFIGURED_VIDEO_ID.isEmpty() && !CONFIGURED_PLAYLIST_ID.isEmpty()) {
+            return Uri.parse("https://www.youtube.com/playlist")
+                    .buildUpon()
+                    .appendQueryParameter("list", CONFIGURED_PLAYLIST_ID)
+                    .build();
+        }
+
+        return builder.build();
     }
 
     private boolean registerTripleTap(ArrayDeque<Long> taps) {

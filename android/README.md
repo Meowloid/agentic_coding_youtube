@@ -11,7 +11,8 @@ It intentionally starts small:
 - Swipe gestures.
 - Triple tap Play for Home.
 - Triple tap Status for caregiver settings.
-- Caregiver settings can open the configured YouTube video.
+- Play opens the configured YouTube source through the normal YouTube app/browser handoff.
+- Caregiver settings can also open the configured YouTube source.
 
 The first native goal is to validate Android touch/TTS behavior on a real phone before embedding or controlling YouTube playback directly.
 
@@ -37,5 +38,5 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 ## Current Limitations
 
 - No embedded YouTube playback yet.
-- The caregiver action opens a hardcoded YouTube video.
+- The configured source is currently hardcoded in `MainActivity.java`.
 - Playlist/source config is still in the browser prototype.
