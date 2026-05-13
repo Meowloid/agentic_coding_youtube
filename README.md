@@ -125,3 +125,5 @@ Native Android gives us better control over:
 - Caregiver-managed channel links can now be refreshed into a generated recent-uploads queue.
 
 The Android version should preserve the current tested behavior before adding new features.
+
+For private APK shipping, see [android/README.md](android/README.md).

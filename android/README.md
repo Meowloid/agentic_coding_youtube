@@ -44,6 +44,37 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleDebug
 ```
 
+## Private Release APK
+
+The debug APK is enough for quick testing. For a cleaner private APK, create a local signing key once:
+
+```powershell
+cd C:\Users\Tairul\Desktop\tahir\agentic_coding_youtube\android
+powershell -ExecutionPolicy Bypass -File .\create-release-keystore.ps1
+```
+
+Choose passwords you can keep somewhere safe. The script creates:
+
+- `android/accessible-youtube-release.jks`
+- `android/keystore.properties`
+
+Both files are ignored by Git because they are private signing material.
+
+Then build the signed release APK:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleRelease
+```
+
+The APK will be here:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+Keep the `.jks` file. Android treats updates as the same app only when future APKs are signed with the same key.
+
 ## Current Limitations
 
 - Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.

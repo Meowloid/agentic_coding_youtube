@@ -52,6 +52,8 @@
 - Added caregiver-visible recent-upload refresh diagnostics for channel resolution, feed failures, empty feeds, and videos added.
 - Added support for caregiver-pasted YouTube RSS feed URLs that already contain a `channel_id=UC...` query parameter.
 - Improved native channel refresh diagnostics to include exception messages, use browser-like request headers, and check more channel ID patterns for `@handle` links.
+- Added Android release signing configuration that reads from ignored local keystore properties.
+- Added a PowerShell helper for creating a private release keystore and documented signed APK builds.
 
 ### Fixed
 
