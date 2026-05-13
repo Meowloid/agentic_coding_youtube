@@ -31,10 +31,11 @@ public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
     private static final long TRIPLE_TAP_MS = 900;
     private static final long CAREGIVER_OPEN_GUARD_MS = 500;
-    private static final SourceMode CONFIGURED_SOURCE_MODE = SourceMode.PLAYLIST;
+    private static final SourceMode CONFIGURED_SOURCE_MODE = SourceMode.VIDEO_IN_PLAYLIST;
     private static final String CONFIGURED_SOURCE_NAME = "Audio novel playlist";
-    private static final String CONFIGURED_VIDEO_ID = "";
+    private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
     private static final String CONFIGURED_PLAYLIST_ID = "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x";
+    private static final String EMBED_ORIGIN = "https://www.youtube-nocookie.com";
 
     private enum SourceMode {
         VIDEO,
@@ -135,7 +136,7 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.loadDataWithBaseURL(
-                "https://www.youtube.com",
+                EMBED_ORIGIN,
                 buildPlayerHtml(),
                 "text/html",
                 "UTF-8",
@@ -400,8 +401,9 @@ public class MainActivity extends Activity {
                 + "var sourceMode='" + escapeJs(sourceMode) + "';"
                 + "var playlistId='" + escapeJs(CONFIGURED_PLAYLIST_ID) + "';"
                 + "var videoId='" + escapeJs(CONFIGURED_VIDEO_ID) + "';"
+                + "var embedOrigin='" + escapeJs(EMBED_ORIGIN) + "';"
                 + "function onYouTubeIframeAPIReady(){"
-                + "  var options={height:'100%',width:'100%',playerVars:{playsinline:1,controls:1,rel:0},events:{onReady:onReady,onStateChange:onStateChange,onError:onError}};"
+                + "  var options={host:embedOrigin,height:'100%',width:'100%',playerVars:{playsinline:1,controls:1,rel:0,origin:embedOrigin},events:{onReady:onReady,onStateChange:onStateChange,onError:onError}};"
                 + "  if(sourceMode==='VIDEO'){options.videoId=videoId;}"
                 + "  if(sourceMode==='VIDEO_IN_PLAYLIST'){options.videoId=videoId;options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
                 + "  if(sourceMode==='PLAYLIST'){options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
@@ -417,7 +419,7 @@ public class MainActivity extends Activity {
                 + "  AndroidPlayer.onStateChange(event.data,title);"
                 + "}"
                 + "function onError(code){AndroidPlayer.onError(String(code));}"
-                + "function playVideo(){if(!player){return;} if(sourceMode==='PLAYLIST'&&player.loadPlaylist){player.loadPlaylist({list:playlistId,index:0,startSeconds:0});return;} player.playVideo();}"
+                + "function playVideo(){if(!player){return;} player.playVideo();}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
                 + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
                 + "function goHome(){if(player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
