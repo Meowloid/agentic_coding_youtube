@@ -109,6 +109,12 @@ On the Android phone:
 
 For future updates, keep using the same keystore and increase `versionCode` and `versionName` in `android/app/build.gradle.kts` before building a new release APK.
 
+## Future Discovery And Saving
+
+A possible stretch goal is a discovery source that builds a queue from related or recommended videos. The main risk is keeping it useful without turning the app into a full YouTube replacement.
+
+Another stretch goal is a simple blind-user macro for saving the current video. The lowest-risk version would save videos locally inside the app for caregiver review. A fuller version could save to a real YouTube playlist, similar to Watch Later, but that would require Google account sign-in and playlist-write permissions.
+
 ## Current Limitations
 
 - Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.

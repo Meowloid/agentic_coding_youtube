@@ -4,13 +4,11 @@ This is Prototype 1 for a simple YouTube-oriented player designed around touch m
 
 The original browser prototype still lives at the repo root. The native Android prototype now lives in `android/` and is the main direction for phone testing.
 
-## Goal
-
-Answer this question first:
-
-> Can she open one stable page, press one large zone, hear clear spoken feedback, and start YouTube playback without normal ads when signed in with YouTube Premium?
-
 ## How To Run
+
+---
+DEPRECATED: Recommended to download the APK off of Github Releases instead of using the webhosted version, which was used for initial prototyping/testing.
+---
 
 Run the local server:
 
@@ -63,6 +61,13 @@ For the most realistic test:
 Triple tap Play to return Home. In the current prototype, Home means cueing the beginning of the configured playlist or video without starting playback. Press Play again to start.
 
 In future versions, Home can become the stable starting point for multiple sources, such as playlists, latest uploads, or discovery modes.
+
+## Stretch Goals
+
+- Add a discovery queue that behaves more like YouTube recommendations or related videos, while keeping the main controls simple and predictable.
+- Add an easy blind-user macro for saving the current video to a caregiver-managed list.
+- Explore Google/YouTube account integration so saved videos could optionally go into a real YouTube playlist, similar to Watch Later.
+- Keep account integration optional. A local saved-video list is simpler, safer, and more reliable for the prototype, while real YouTube playlist writes would require Google sign-in, OAuth permissions, and more caregiver setup.
 
 ## Caregiver Settings
 
