@@ -2,10 +2,14 @@ package com.meowloid.accessibleyoutube;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -126,6 +130,8 @@ public class MainActivity extends Activity {
     }
 
     private TextToSpeech tts;
+    private AudioManager audioManager;
+    private AudioFocusRequest ttsAudioFocusRequest;
     private TextView titleText;
     private TextView statusText;
     private WebView playerWebView;
@@ -147,18 +153,25 @@ public class MainActivity extends Activity {
     private boolean playAfterRefresh = false;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
+    private final Runnable finishSpeechAssistRunnable = () -> {
+        callPlayer("restorePlayerVolume()");
+        if (audioManager != null && ttsAudioFocusRequest != null) {
+            audioManager.abandonAudioFocusRequest(ttsAudioFocusRequest);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         curatedChannelLinks = loadChannelLinks();
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         Window window = getWindow();
         window.setStatusBarColor(Color.rgb(5, 5, 5));
         window.setNavigationBarColor(Color.rgb(5, 5, 5));
 
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(INTERFACE_LOCALE);
+                configureTts();
                 speak("Ready. Long press any area for help.");
             }
         });
@@ -1105,6 +1118,9 @@ public class MainActivity extends Activity {
                 + "function pauseVideo(){if(player&&player.pauseVideo){player.pauseVideo();}}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
                 + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
+                + "var previousVolume=100;"
+                + "function duckPlayerForSpeech(){if(player&&player.getVolume&&player.setVolume){previousVolume=player.getVolume();player.setVolume(18);}}"
+                + "function restorePlayerVolume(){if(player&&player.setVolume){player.setVolume(previousVolume);}}"
                 + "function goHome(){if(!player||!player.cuePlaylist){return;} if(sourceType==='RECENT_UPLOADS'&&generatedVideoIds.length>0){player.cuePlaylist({playlist:generatedVideoIds,index:0,startSeconds:0});}else{player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
                 + "</script></body></html>";
     }
@@ -1218,10 +1234,50 @@ public class MainActivity extends Activity {
         statusText.setText(message);
     }
 
+    private void configureTts() {
+        AudioAttributes speechAttributes = buildSpeechAudioAttributes();
+        tts.setAudioAttributes(speechAttributes);
+        tts.setSpeechRate(0.95f);
+        setTtsLanguage(INTERFACE_LOCALE);
+
+        ttsAudioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(speechAttributes)
+                .setOnAudioFocusChangeListener(focusChange -> {
+                })
+                .build();
+    }
+
+    private AudioAttributes buildSpeechAudioAttributes() {
+        return new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build();
+    }
+
+    private void prepareSpeechAssist(String message) {
+        if (audioManager != null && ttsAudioFocusRequest != null) {
+            audioManager.requestAudioFocus(ttsAudioFocusRequest);
+        }
+
+        callPlayer("duckPlayerForSpeech()");
+        mainHandler.removeCallbacks(finishSpeechAssistRunnable);
+        mainHandler.postDelayed(finishSpeechAssistRunnable, estimateSpeechDurationMs(message));
+    }
+
+    private long estimateSpeechDurationMs(String message) {
+        return Math.max(2500L, Math.min(12_000L, 1800L + (long) message.length() * 70L));
+    }
+
+    private boolean setTtsLanguage(Locale locale) {
+        int result = tts.setLanguage(locale);
+        return result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED;
+    }
+
     private void speak(String message) {
         if (tts != null) {
+            prepareSpeechAssist(message);
             tts.stop();
-            tts.setLanguage(INTERFACE_LOCALE);
+            setTtsLanguage(INTERFACE_LOCALE);
             tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "status");
         }
     }
@@ -1231,12 +1287,15 @@ public class MainActivity extends Activity {
             return;
         }
 
+        prepareSpeechAssist(prefix + " " + title);
         tts.stop();
-        tts.setLanguage(INTERFACE_LOCALE);
+        setTtsLanguage(INTERFACE_LOCALE);
         tts.speak(prefix, TextToSpeech.QUEUE_FLUSH, null, "status-prefix");
-        tts.setLanguage(TITLE_LOCALE);
+        if (!setTtsLanguage(TITLE_LOCALE)) {
+            setTtsLanguage(INTERFACE_LOCALE);
+        }
         tts.speak(title, TextToSpeech.QUEUE_ADD, null, "status-title");
-        tts.setLanguage(INTERFACE_LOCALE);
+        setTtsLanguage(INTERFACE_LOCALE);
     }
 
     private int dp(int value) {
@@ -1253,6 +1312,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        mainHandler.removeCallbacks(finishSpeechAssistRunnable);
+        if (audioManager != null && ttsAudioFocusRequest != null) {
+            audioManager.abandonAudioFocusRequest(ttsAudioFocusRequest);
+        }
         if (tts != null) {
             tts.stop();
             tts.shutdown();
