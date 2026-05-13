@@ -39,6 +39,8 @@
 - Added experimental embedded YouTube WebView playback to the native Android shell, with native Play/Previous/Next/Home calling the IFrame Player API.
 - Adjusted native playlist-only WebView initialization to avoid passing an empty video ID into the YouTube iframe player.
 - Switched the native WebView embed experiment to `youtube-nocookie.com` with an explicit origin and video-in-playlist initialization.
+- Wired native downward swipe to toggle embedded play/pause.
+- Split native Status TTS so interface text uses English while the current video title uses Indonesian.
 
 ### Fixed
 

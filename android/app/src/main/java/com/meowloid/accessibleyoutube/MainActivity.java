@@ -36,6 +36,8 @@ public class MainActivity extends Activity {
     private static final String CONFIGURED_VIDEO_ID = "rKd-Bmr7e_k";
     private static final String CONFIGURED_PLAYLIST_ID = "PLmGt95b9fl5dHbCq_bWP8CTp6z4i1mP5x";
     private static final String EMBED_ORIGIN = "https://www.youtube-nocookie.com";
+    private static final Locale INTERFACE_LOCALE = Locale.US;
+    private static final Locale TITLE_LOCALE = new Locale("id", "ID");
 
     private enum SourceMode {
         VIDEO,
@@ -49,6 +51,7 @@ public class MainActivity extends Activity {
     private WebView playerWebView;
     private Dialog caregiverDialog;
     private boolean playerReady = false;
+    private boolean isPlaying = false;
     private String currentTitle = CONFIGURED_SOURCE_NAME;
     private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
@@ -63,7 +66,7 @@ public class MainActivity extends Activity {
 
         tts = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
-                tts.setLanguage(Locale.US);
+                tts.setLanguage(INTERFACE_LOCALE);
                 speak("Ready. Long press any area for help.");
             }
         });
@@ -176,7 +179,7 @@ public class MainActivity extends Activity {
                     }
                 } else {
                     if (dy > 0) {
-                        speak("Play pause.");
+                        togglePlayPause();
                     } else {
                         handleStatus();
                     }
@@ -230,7 +233,7 @@ public class MainActivity extends Activity {
         }
 
         setStatus("Current source. " + currentTitle);
-        speak("Current source. " + currentTitle);
+        speakStatusWithTitle("Current source.", currentTitle);
     }
 
     private void handlePrevious() {
@@ -262,6 +265,24 @@ public class MainActivity extends Activity {
         setStatus("Starting playback.");
         speak("Starting playback.");
         callPlayer("playVideo()");
+    }
+
+    private void togglePlayPause() {
+        if (!playerReady) {
+            setStatus("YouTube player is still loading.");
+            speak("YouTube player is still loading.");
+            return;
+        }
+
+        if (isPlaying) {
+            setStatus("Paused.");
+            speak("Paused.");
+            callPlayer("pauseVideo()");
+        } else {
+            setStatus("Playing.");
+            speak("Playing.");
+            callPlayer("playVideo()");
+        }
     }
 
     private void openCaregiverDialog() {
@@ -420,6 +441,7 @@ public class MainActivity extends Activity {
                 + "}"
                 + "function onError(code){AndroidPlayer.onError(String(code));}"
                 + "function playVideo(){if(!player){return;} player.playVideo();}"
+                + "function pauseVideo(){if(player&&player.pauseVideo){player.pauseVideo();}}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
                 + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
                 + "function goHome(){if(player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
@@ -449,8 +471,10 @@ public class MainActivity extends Activity {
                 }
 
                 if (state == 1) {
+                    isPlaying = true;
                     setStatus("Playing. " + currentTitle);
                 } else if (state == 2) {
+                    isPlaying = false;
                     setStatus("Paused.");
                 } else if (state == 3) {
                     setStatus("Loading.");
@@ -490,8 +514,22 @@ public class MainActivity extends Activity {
     private void speak(String message) {
         if (tts != null) {
             tts.stop();
+            tts.setLanguage(INTERFACE_LOCALE);
             tts.speak(message, TextToSpeech.QUEUE_FLUSH, null, "status");
         }
+    }
+
+    private void speakStatusWithTitle(String prefix, String title) {
+        if (tts == null) {
+            return;
+        }
+
+        tts.stop();
+        tts.setLanguage(INTERFACE_LOCALE);
+        tts.speak(prefix, TextToSpeech.QUEUE_FLUSH, null, "status-prefix");
+        tts.setLanguage(TITLE_LOCALE);
+        tts.speak(title, TextToSpeech.QUEUE_ADD, null, "status-title");
+        tts.setLanguage(INTERFACE_LOCALE);
     }
 
     private int dp(int value) {
