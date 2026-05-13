@@ -42,6 +42,7 @@
 - Wired native downward swipe to toggle embedded play/pause.
 - Split native Status TTS so interface text uses English while the current video title uses Indonesian.
 - Fixed native touch handling so swipes no longer also trigger the underlying button tap.
+- Updated the native caregiver YouTube escape hatch to open the current embedded video and timestamp instead of the configured starting source.
 
 ### Fixed
 

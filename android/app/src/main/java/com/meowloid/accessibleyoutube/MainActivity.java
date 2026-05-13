@@ -53,7 +53,11 @@ public class MainActivity extends Activity {
     private Dialog caregiverDialog;
     private boolean playerReady = false;
     private boolean isPlaying = false;
+    private boolean openYouTubeAfterSnapshot = false;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private String currentTitle = CONFIGURED_SOURCE_NAME;
+    private String currentVideoId = CONFIGURED_VIDEO_ID;
+    private int currentVideoSeconds = 0;
     private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
@@ -384,11 +388,46 @@ public class MainActivity extends Activity {
     }
 
     private void openConfiguredSource() {
-        closeCaregiverDialog();
         setStatus("Opening YouTube.");
         speak("Opening YouTube.");
-        Intent intent = new Intent(Intent.ACTION_VIEW, buildConfiguredSourceUri());
+        openYouTubeAfterSnapshot = true;
+        refreshCurrentPlaybackSnapshot();
+        mainHandler.postDelayed(() -> {
+            if (openYouTubeAfterSnapshot) {
+                openYouTubeAfterSnapshot = false;
+                openCurrentPlaybackInYouTube();
+            }
+        }, 350);
+    }
+
+    private void refreshCurrentPlaybackSnapshot() {
+        callPlayer("sendSnapshot()");
+    }
+
+    private void openCurrentPlaybackInYouTube() {
+        closeCaregiverDialog();
+        Intent intent = new Intent(Intent.ACTION_VIEW, buildCurrentPlaybackUri());
         startActivity(intent);
+    }
+
+    private Uri buildCurrentPlaybackUri() {
+        Uri.Builder builder = Uri.parse("https://www.youtube.com/watch").buildUpon();
+
+        if (currentVideoId != null && !currentVideoId.isEmpty()) {
+            builder.appendQueryParameter("v", currentVideoId);
+        } else if (!CONFIGURED_VIDEO_ID.isEmpty()) {
+            builder.appendQueryParameter("v", CONFIGURED_VIDEO_ID);
+        }
+
+        if (!CONFIGURED_PLAYLIST_ID.isEmpty()) {
+            builder.appendQueryParameter("list", CONFIGURED_PLAYLIST_ID);
+        }
+
+        if (currentVideoSeconds > 0) {
+            builder.appendQueryParameter("t", currentVideoSeconds + "s");
+        }
+
+        return builder.build();
     }
 
     private Uri buildConfiguredSourceUri() {
@@ -450,9 +489,19 @@ public class MainActivity extends Activity {
                 + "function onStateChange(event){"
                 + "  var data=player.getVideoData ? player.getVideoData() : null;"
                 + "  var title=data && data.title ? data.title : '';"
-                + "  AndroidPlayer.onStateChange(event.data,title);"
+                + "  var videoId=data && data.video_id ? data.video_id : '';"
+                + "  var seconds=player.getCurrentTime ? Math.floor(player.getCurrentTime()) : 0;"
+                + "  AndroidPlayer.onStateChange(event.data,title,videoId,seconds);"
                 + "}"
                 + "function onError(code){AndroidPlayer.onError(String(code));}"
+                + "function sendSnapshot(){"
+                + "  if(!player){return;}"
+                + "  var data=player.getVideoData ? player.getVideoData() : null;"
+                + "  var title=data && data.title ? data.title : '';"
+                + "  var videoId=data && data.video_id ? data.video_id : '';"
+                + "  var seconds=player.getCurrentTime ? Math.floor(player.getCurrentTime()) : 0;"
+                + "  AndroidPlayer.onSnapshot(title,videoId,seconds);"
+                + "}"
                 + "function playVideo(){if(!player){return;} player.playVideo();}"
                 + "function pauseVideo(){if(player&&player.pauseVideo){player.pauseVideo();}}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
@@ -476,12 +525,16 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void onStateChange(int state, String title) {
+        public void onStateChange(int state, String title, String videoId, int seconds) {
             runOnUiThread(() -> {
                 if (title != null && !title.isEmpty()) {
                     currentTitle = title;
                     titleText.setText(title);
                 }
+                if (videoId != null && !videoId.isEmpty()) {
+                    currentVideoId = videoId;
+                }
+                currentVideoSeconds = Math.max(0, seconds);
 
                 if (state == 1) {
                     isPlaying = true;
@@ -503,6 +556,28 @@ public class MainActivity extends Activity {
                 speak(message);
             });
         }
+
+        @JavascriptInterface
+        public void onSnapshot(String title, String videoId, int seconds) {
+            runOnUiThread(() -> {
+                updateCurrentPlayback(title, videoId, seconds);
+                if (openYouTubeAfterSnapshot) {
+                    openYouTubeAfterSnapshot = false;
+                    openCurrentPlaybackInYouTube();
+                }
+            });
+        }
+    }
+
+    private void updateCurrentPlayback(String title, String videoId, int seconds) {
+        if (title != null && !title.isEmpty()) {
+            currentTitle = title;
+            titleText.setText(title);
+        }
+        if (videoId != null && !videoId.isEmpty()) {
+            currentVideoId = videoId;
+        }
+        currentVideoSeconds = Math.max(0, seconds);
     }
 
     private boolean registerTripleTap(ArrayDeque<Long> taps) {
