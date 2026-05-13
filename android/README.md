@@ -7,11 +7,14 @@ It intentionally starts small:
 - Native portrait UI.
 - Four large controls.
 - Native Android TextToSpeech.
+- Embedded YouTube WebView using the IFrame Player API.
 - Long-press help.
 - Swipe gestures.
 - Triple tap Play for Home.
 - Triple tap Status for caregiver settings.
-- Play opens the configured YouTube source through the normal YouTube app/browser handoff.
+- Play starts playback inside the app.
+- Previous/Next call the embedded player.
+- Home cues the starting playlist source.
 - Caregiver settings can also open the configured YouTube source.
 - The native source mode is currently playlist-only for the audio-novel use case.
 
@@ -38,6 +41,6 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
 ## Current Limitations
 
-- No embedded YouTube playback yet.
+- Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.
 - The configured source mode and IDs are currently hardcoded in `MainActivity.java`.
 - Playlist/source config is still in the browser prototype.

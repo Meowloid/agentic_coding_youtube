@@ -121,5 +121,6 @@ Native Android should give us better control over:
 - Fullscreen/kiosk-style presentation.
 - Device-level accessibility settings.
 - YouTube handoff through Android intents or WebView experiments.
+- Embedded YouTube playback is currently being tested in the native Android shell with the YouTube IFrame Player API.
 
 The Android version should preserve the current tested behavior before adding new features.

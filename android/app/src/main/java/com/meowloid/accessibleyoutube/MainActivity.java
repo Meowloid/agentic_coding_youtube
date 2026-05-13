@@ -10,6 +10,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import android.view.Window;
 import android.view.GestureDetector;
 import android.view.Gravity;
@@ -41,7 +45,10 @@ public class MainActivity extends Activity {
     private TextToSpeech tts;
     private TextView titleText;
     private TextView statusText;
+    private WebView playerWebView;
     private Dialog caregiverDialog;
+    private boolean playerReady = false;
+    private String currentTitle = CONFIGURED_SOURCE_NAME;
     private long caregiverOpenedAt = 0L;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
@@ -92,11 +99,17 @@ public class MainActivity extends Activity {
                 getStatusBarHeight() + dp(104)
         ));
 
+        playerWebView = buildPlayerWebView();
+        root.addView(playerWebView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(180)
+        ));
+
         GridLayout controls = new GridLayout(this);
         controls.setColumnCount(2);
         controls.setRowCount(2);
 
-        controls.addView(controlButton("Play", "Play. Opens the configured YouTube source.", this::handlePlay));
+        controls.addView(controlButton("Play", "Play. Starts playback inside this app.", this::handlePlay));
         controls.addView(controlButton("Status", "Status. Speaks what is currently happening.", this::handleStatus));
         controls.addView(controlButton("Previous", "Previous. Goes back.", this::handlePrevious));
         controls.addView(controlButton("Next", "Next. Goes forward.", this::handleNext));
@@ -108,6 +121,28 @@ public class MainActivity extends Activity {
         ));
 
         return root;
+    }
+
+    private WebView buildPlayerWebView() {
+        WebView webView = new WebView(this);
+        webView.setBackgroundColor(Color.BLACK);
+        webView.setWebChromeClient(new WebChromeClient());
+        webView.addJavascriptInterface(new PlayerBridge(), "AndroidPlayer");
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+
+        webView.loadDataWithBaseURL(
+                "https://www.youtube.com",
+                buildPlayerHtml(),
+                "text/html",
+                "UTF-8",
+                null
+        );
+
+        return webView;
     }
 
     private Button controlButton(String label, String help, Runnable action) {
@@ -184,7 +219,7 @@ public class MainActivity extends Activity {
             return;
         }
 
-        openConfiguredSource();
+        playEmbeddedSource();
     }
 
     private void handleStatus() {
@@ -193,24 +228,39 @@ public class MainActivity extends Activity {
             return;
         }
 
-        setStatus("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
-        speak("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
+        setStatus("Current source. " + currentTitle);
+        speak("Current source. " + currentTitle);
     }
 
     private void handlePrevious() {
         setStatus("Previous.");
         speak("Previous.");
+        callPlayer("previousVideo()");
     }
 
     private void handleNext() {
         setStatus("Next.");
         speak("Next.");
+        callPlayer("nextVideo()");
     }
 
     private void goHome() {
         closeCaregiverDialog();
         setStatus("Home. " + CONFIGURED_SOURCE_NAME + " ready.");
         speak("Home.");
+        callPlayer("goHome()");
+    }
+
+    private void playEmbeddedSource() {
+        if (!playerReady) {
+            setStatus("YouTube player is still loading.");
+            speak("YouTube player is still loading.");
+            return;
+        }
+
+        setStatus("Starting playback.");
+        speak("Starting playback.");
+        callPlayer("playVideo()");
     }
 
     private void openCaregiverDialog() {
@@ -328,6 +378,89 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void callPlayer(String script) {
+        if (playerWebView != null) {
+            playerWebView.evaluateJavascript(script, null);
+        }
+    }
+
+    private String buildPlayerHtml() {
+        return "<!doctype html>"
+                + "<html><head>"
+                + "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+                + "<style>"
+                + "html,body,#player{margin:0;width:100%;height:100%;background:#000;overflow:hidden;}"
+                + "</style>"
+                + "</head><body>"
+                + "<div id='player'></div>"
+                + "<script src='https://www.youtube.com/iframe_api'></script>"
+                + "<script>"
+                + "var player;"
+                + "var playlistId='" + escapeJs(CONFIGURED_PLAYLIST_ID) + "';"
+                + "var videoId='" + escapeJs(CONFIGURED_VIDEO_ID) + "';"
+                + "function onYouTubeIframeAPIReady(){"
+                + "  player=new YT.Player('player',{"
+                + "    height:'100%',width:'100%',videoId:videoId,"
+                + "    playerVars:{playsinline:1,controls:1,rel:0,listType:'playlist',list:playlistId},"
+                + "    events:{onReady:onReady,onStateChange:onStateChange,onError:onError}"
+                + "  });"
+                + "}"
+                + "function onReady(){AndroidPlayer.onReady();}"
+                + "function onStateChange(event){"
+                + "  var data=player.getVideoData ? player.getVideoData() : null;"
+                + "  var title=data && data.title ? data.title : '';"
+                + "  AndroidPlayer.onStateChange(event.data,title);"
+                + "}"
+                + "function onError(code){AndroidPlayer.onError(String(code));}"
+                + "function playVideo(){if(player){player.playVideo();}}"
+                + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
+                + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
+                + "function goHome(){if(player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
+                + "</script></body></html>";
+    }
+
+    private String escapeJs(String value) {
+        return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
+    private class PlayerBridge {
+        @JavascriptInterface
+        public void onReady() {
+            runOnUiThread(() -> {
+                playerReady = true;
+                setStatus("YouTube player ready.");
+                speak("YouTube player ready.");
+            });
+        }
+
+        @JavascriptInterface
+        public void onStateChange(int state, String title) {
+            runOnUiThread(() -> {
+                if (title != null && !title.isEmpty()) {
+                    currentTitle = title;
+                    titleText.setText(title);
+                }
+
+                if (state == 1) {
+                    setStatus("Playing. " + currentTitle);
+                } else if (state == 2) {
+                    setStatus("Paused.");
+                } else if (state == 3) {
+                    setStatus("Loading.");
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void onError(String code) {
+            runOnUiThread(() -> {
+                String message = "YouTube playback error " + code + ".";
+                setStatus(message);
+                speak(message);
+            });
+        }
+    }
+
     private boolean registerTripleTap(ArrayDeque<Long> taps) {
         long now = System.currentTimeMillis();
         while (!taps.isEmpty() && now - taps.peekFirst() > TRIPLE_TAP_MS) {
@@ -371,6 +504,9 @@ public class MainActivity extends Activity {
         if (tts != null) {
             tts.stop();
             tts.shutdown();
+        }
+        if (playerWebView != null) {
+            playerWebView.destroy();
         }
         super.onDestroy();
     }

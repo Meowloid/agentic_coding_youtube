@@ -36,6 +36,7 @@
 - Added a short native caregiver dialog tap lockout after opening to avoid accidental button activation.
 - Changed native Play to open the configured YouTube video/playlist through Android's normal YouTube handoff.
 - Changed the native configured source to explicit playlist mode to avoid mismatched video-plus-playlist handoff behavior.
+- Added experimental embedded YouTube WebView playback to the native Android shell, with native Play/Previous/Next/Home calling the IFrame Player API.
 
 ### Fixed
 
