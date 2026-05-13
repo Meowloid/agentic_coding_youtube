@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.util.Xml;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -27,10 +28,20 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.xmlpull.v1.XmlPullParser;
+
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainActivity extends Activity {
     private static final long LONG_PRESS_MS = 750;
@@ -41,6 +52,7 @@ public class MainActivity extends Activity {
     private static final String PREFS_NAME = "accessible_youtube_prefs";
     private static final String PREF_CHANNEL_LINKS = "channel_links";
     private static final String CHANNEL_LINK_SEPARATOR = "\n";
+    private static final int MAX_RECENT_UPLOADS = 25;
     private static final Locale INTERFACE_LOCALE = Locale.US;
     private static final Locale TITLE_LOCALE = new Locale("id", "ID");
     private static final Source[] SOURCES = {
@@ -98,6 +110,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    private static class VideoItem {
+        final String id;
+        final String title;
+
+        VideoItem(String id, String title) {
+            this.id = id;
+            this.title = title;
+        }
+    }
+
     private TextToSpeech tts;
     private TextView titleText;
     private TextView statusText;
@@ -113,7 +135,10 @@ public class MainActivity extends Activity {
     private String currentVideoId = currentSource().videoId;
     private int currentVideoSeconds = 0;
     private ArrayList<String> curatedChannelLinks = new ArrayList<>();
+    private ArrayList<VideoItem> generatedRecentVideos = new ArrayList<>();
     private long caregiverOpenedAt = 0L;
+    private boolean refreshingUploads = false;
+    private boolean playAfterRefresh = false;
     private final ArrayDeque<Long> playTaps = new ArrayDeque<>();
     private final ArrayDeque<Long> statusTaps = new ArrayDeque<>();
 
@@ -338,9 +363,13 @@ public class MainActivity extends Activity {
             speak("YouTube player is still loading.");
             return;
         }
-        if (!currentSource().hasPlayableQueue()) {
-            setStatus("This source needs refresh before playback.");
-            speak("This source needs refresh before playback.");
+        if (!hasCurrentPlayableQueue()) {
+            if (currentSource().type == SourceType.RECENT_UPLOADS) {
+                refreshLatestUploads(true);
+                return;
+            }
+            setStatus("This source has no playable queue.");
+            speak("This source has no playable queue.");
             return;
         }
 
@@ -498,11 +527,22 @@ public class MainActivity extends Activity {
         panel.addView(heading);
 
         TextView note = new TextView(this);
-        note.setText("Stored for future latest-upload refresh.");
+        note.setText("Paste channel links here, then refresh recent videos.");
         note.setTextColor(Color.WHITE);
         note.setTextSize(15);
         note.setPadding(0, dp(6), 0, dp(10));
         panel.addView(note);
+
+        Button refresh = caregiverButton("Refresh Recent Videos");
+        refresh.setOnClickListener(view -> {
+            if (channelDialog != null) {
+                channelDialog.dismiss();
+            }
+            currentSourceIndex = 1;
+            titleText.setText(currentSource().name);
+            refreshLatestUploads(false);
+        });
+        panel.addView(refresh);
 
         for (String link : curatedChannelLinks) {
             TextView row = new TextView(this);
@@ -590,7 +630,7 @@ public class MainActivity extends Activity {
     }
 
     private void openConfiguredSource() {
-        if (!currentSource().hasPlayableQueue()) {
+        if (!hasCurrentPlayableQueue()) {
             setStatus("This source has no generated playlist yet.");
             speak("This source has no generated playlist yet.");
             return;
@@ -615,7 +655,7 @@ public class MainActivity extends Activity {
         currentVideoSeconds = 0;
         titleText.setText(source.name);
 
-        if (source.hasPlayableQueue()) {
+        if (hasCurrentPlayableQueue()) {
             playerReady = false;
             playerWebView.loadDataWithBaseURL(
                     EMBED_ORIGIN,
@@ -626,9 +666,225 @@ public class MainActivity extends Activity {
             );
             setStatus("Source changed. " + source.name + ".");
             speak("Source changed. " + source.name + ".");
+        } else if (source.type == SourceType.RECENT_UPLOADS) {
+            setStatus("Source changed. Refreshing latest uploads.");
+            speak("Source changed. Refreshing latest uploads.");
+            refreshLatestUploads(false);
         } else {
-            setStatus("Source changed. " + source.name + ". Refresh latest uploads is not implemented yet.");
-            speak("Source changed. Refresh latest uploads is not implemented yet.");
+            setStatus("Source changed. " + source.name + ". No playable queue.");
+            speak("Source changed. No playable queue.");
+        }
+    }
+
+    private boolean hasCurrentPlayableQueue() {
+        Source source = currentSource();
+        return source.hasPlayableQueue()
+                || (source.type == SourceType.RECENT_UPLOADS && !generatedRecentVideos.isEmpty());
+    }
+
+    private void refreshLatestUploads(boolean shouldPlayAfterRefresh) {
+        if (refreshingUploads) {
+            playAfterRefresh = playAfterRefresh || shouldPlayAfterRefresh;
+            setStatus("Already refreshing recent videos.");
+            speak("Already refreshing recent videos.");
+            return;
+        }
+
+        if (curatedChannelLinks.isEmpty()) {
+            setStatus("No channel links saved.");
+            speak("No channel links saved.");
+            return;
+        }
+
+        refreshingUploads = true;
+        playAfterRefresh = shouldPlayAfterRefresh;
+        setStatus("Refreshing recent videos.");
+        speak("Refreshing recent videos.");
+
+        new Thread(() -> {
+            try {
+                ArrayList<VideoItem> videos = fetchRecentVideos(curatedChannelLinks);
+                runOnUiThread(() -> finishRecentVideoRefresh(videos, null));
+            } catch (Exception error) {
+                runOnUiThread(() -> finishRecentVideoRefresh(new ArrayList<>(), error));
+            }
+        }).start();
+    }
+
+    private void finishRecentVideoRefresh(ArrayList<VideoItem> videos, Exception error) {
+        refreshingUploads = false;
+
+        if (videos.isEmpty()) {
+            playAfterRefresh = false;
+            String message = error == null
+                    ? "No recent videos found. Check the saved channel links."
+                    : "Could not refresh recent videos. Check network and channel links.";
+            setStatus(message);
+            speak(message);
+            return;
+        }
+
+        generatedRecentVideos = videos;
+        currentSourceIndex = 1;
+        currentTitle = videos.get(0).title;
+        currentVideoId = videos.get(0).id;
+        currentVideoSeconds = 0;
+        titleText.setText(currentTitle);
+
+        playerReady = false;
+        playerWebView.loadDataWithBaseURL(
+                EMBED_ORIGIN,
+                buildPlayerHtml(),
+                "text/html",
+                "UTF-8",
+                null
+        );
+
+        setStatus("Recent videos ready. " + videos.size() + " videos.");
+        speak("Recent videos ready.");
+    }
+
+    private ArrayList<VideoItem> fetchRecentVideos(ArrayList<String> channelLinks) throws Exception {
+        ArrayList<VideoItem> videos = new ArrayList<>();
+        Set<String> seenVideoIds = new LinkedHashSet<>();
+
+        for (String link : channelLinks) {
+            if (link.toLowerCase(Locale.US).contains("replace")) {
+                continue;
+            }
+            String channelId = resolveChannelId(link);
+            if (channelId == null || channelId.isEmpty()) {
+                continue;
+            }
+
+            for (VideoItem video : fetchChannelFeed(channelId)) {
+                if (seenVideoIds.add(video.id)) {
+                    videos.add(video);
+                    if (videos.size() >= MAX_RECENT_UPLOADS) {
+                        return videos;
+                    }
+                }
+            }
+        }
+
+        return videos;
+    }
+
+    private String resolveChannelId(String link) throws Exception {
+        String normalized = normalizeChannelLink(link);
+        if (normalized.startsWith("UC")) {
+            return normalized;
+        }
+
+        Uri uri = Uri.parse(normalized);
+        ArrayList<String> segments = new ArrayList<>(uri.getPathSegments());
+        for (int i = 0; i < segments.size(); i++) {
+            if ("channel".equals(segments.get(i)) && i + 1 < segments.size()) {
+                String candidate = segments.get(i + 1);
+                if (candidate.startsWith("UC")) {
+                    return candidate;
+                }
+            }
+        }
+
+        String page = fetchText(normalized, 260_000);
+        return findChannelId(page);
+    }
+
+    private String normalizeChannelLink(String link) {
+        String trimmed = link.trim();
+        if (trimmed.startsWith("@")) {
+            return "https://www.youtube.com/" + trimmed;
+        }
+        if (trimmed.startsWith("youtube.com/") || trimmed.startsWith("www.youtube.com/")) {
+            return "https://" + trimmed;
+        }
+        return trimmed;
+    }
+
+    private String findChannelId(String page) {
+        Pattern[] patterns = {
+                Pattern.compile("\"channelId\"\\s*:\\s*\"(UC[^\"]+)\""),
+                Pattern.compile("youtube\\.com/channel/(UC[^\"]+)"),
+                Pattern.compile("externalId\"\\s*:\\s*\"(UC[^\"]+)\"")
+        };
+
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(page);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+
+        return "";
+    }
+
+    private ArrayList<VideoItem> fetchChannelFeed(String channelId) throws Exception {
+        ArrayList<VideoItem> videos = new ArrayList<>();
+        URL url = new URL("https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setConnectTimeout(12_000);
+        connection.setReadTimeout(12_000);
+        connection.setRequestProperty("User-Agent", "AccessibleYouTubePrototype/0.1");
+
+        try (InputStream input = connection.getInputStream()) {
+            XmlPullParser parser = Xml.newPullParser();
+            parser.setInput(input, null);
+
+            boolean inEntry = false;
+            String videoId = "";
+            String title = "";
+            int eventType = parser.getEventType();
+
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG) {
+                    String name = parser.getName();
+                    if ("entry".equals(name)) {
+                        inEntry = true;
+                        videoId = "";
+                        title = "";
+                    } else if (inEntry && "videoId".equals(name)) {
+                        videoId = parser.nextText().trim();
+                    } else if (inEntry && "title".equals(name)) {
+                        title = parser.nextText().trim();
+                    }
+                } else if (eventType == XmlPullParser.END_TAG && "entry".equals(parser.getName())) {
+                    if (!videoId.isEmpty()) {
+                        videos.add(new VideoItem(videoId, title.isEmpty() ? "Untitled video" : title));
+                    }
+                    inEntry = false;
+                }
+
+                eventType = parser.next();
+            }
+        } finally {
+            connection.disconnect();
+        }
+
+        return videos;
+    }
+
+    private String fetchText(String link, int maxBytes) throws Exception {
+        URL url = new URL(link);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setInstanceFollowRedirects(true);
+        connection.setConnectTimeout(12_000);
+        connection.setReadTimeout(12_000);
+        connection.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+        try (InputStream input = connection.getInputStream();
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int total = 0;
+            int read;
+            while ((read = input.read(buffer)) != -1 && total < maxBytes) {
+                int bytesToWrite = Math.min(read, maxBytes - total);
+                output.write(buffer, 0, bytesToWrite);
+                total += bytesToWrite;
+            }
+            return output.toString("UTF-8");
+        } finally {
+            connection.disconnect();
         }
     }
 
@@ -694,6 +950,8 @@ public class MainActivity extends Activity {
     private String buildPlayerHtml() {
         Source source = currentSource();
         String sourceMode = source.mode.name();
+        String sourceType = source.type.name();
+        String generatedVideoIds = buildGeneratedVideoIdArray();
         return "<!doctype html>"
                 + "<html><head>"
                 + "<meta name='viewport' content='width=device-width, initial-scale=1'>"
@@ -705,19 +963,23 @@ public class MainActivity extends Activity {
                 + "<script src='https://www.youtube.com/iframe_api'></script>"
                 + "<script>"
                 + "var player;"
+                + "var sourceType='" + escapeJs(sourceType) + "';"
                 + "var sourceMode='" + escapeJs(sourceMode) + "';"
                 + "var playlistId='" + escapeJs(source.playlistId) + "';"
                 + "var videoId='" + escapeJs(source.videoId) + "';"
+                + "var generatedVideoIds=" + generatedVideoIds + ";"
                 + "var embedOrigin='" + escapeJs(EMBED_ORIGIN) + "';"
                 + "function onYouTubeIframeAPIReady(){"
                 + "  var options={host:embedOrigin,height:'100%',width:'100%',playerVars:{playsinline:1,controls:1,rel:0,origin:embedOrigin},events:{onReady:onReady,onStateChange:onStateChange,onError:onError}};"
-                + "  if(sourceMode==='VIDEO'){options.videoId=videoId;}"
-                + "  if(sourceMode==='VIDEO_IN_PLAYLIST'){options.videoId=videoId;options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
-                + "  if(sourceMode==='PLAYLIST'){options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
+                + "  if(sourceType==='RECENT_UPLOADS'&&generatedVideoIds.length>0){options.videoId=generatedVideoIds[0];}"
+                + "  else if(sourceMode==='VIDEO'){options.videoId=videoId;}"
+                + "  else if(sourceMode==='VIDEO_IN_PLAYLIST'){options.videoId=videoId;options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
+                + "  else if(sourceMode==='PLAYLIST'){options.playerVars.listType='playlist';options.playerVars.list=playlistId;}"
                 + "  player=new YT.Player('player',options);"
                 + "}"
                 + "function onReady(){"
-                + "  if(sourceMode==='PLAYLIST'&&player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}"
+                + "  if(sourceType==='RECENT_UPLOADS'&&generatedVideoIds.length>0&&player&&player.cuePlaylist){player.cuePlaylist({playlist:generatedVideoIds,index:0,startSeconds:0});}"
+                + "  else if(sourceMode==='PLAYLIST'&&player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}"
                 + "  AndroidPlayer.onReady();"
                 + "}"
                 + "function onStateChange(event){"
@@ -740,8 +1002,20 @@ public class MainActivity extends Activity {
                 + "function pauseVideo(){if(player&&player.pauseVideo){player.pauseVideo();}}"
                 + "function nextVideo(){if(player&&player.nextVideo){player.nextVideo();}}"
                 + "function previousVideo(){if(player&&player.previousVideo){player.previousVideo();}}"
-                + "function goHome(){if(player&&player.cuePlaylist){player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
+                + "function goHome(){if(!player||!player.cuePlaylist){return;} if(sourceType==='RECENT_UPLOADS'&&generatedVideoIds.length>0){player.cuePlaylist({playlist:generatedVideoIds,index:0,startSeconds:0});}else{player.cuePlaylist({list:playlistId,index:0,startSeconds:0});}}"
                 + "</script></body></html>";
+    }
+
+    private String buildGeneratedVideoIdArray() {
+        StringBuilder builder = new StringBuilder("[");
+        for (int i = 0; i < generatedRecentVideos.size(); i++) {
+            if (i > 0) {
+                builder.append(",");
+            }
+            builder.append("'").append(escapeJs(generatedRecentVideos.get(i).id)).append("'");
+        }
+        builder.append("]");
+        return builder.toString();
     }
 
     private String escapeJs(String value) {
@@ -755,6 +1029,14 @@ public class MainActivity extends Activity {
                 playerReady = true;
                 setStatus("YouTube player ready.");
                 speak("YouTube player ready.");
+                if (playAfterRefresh) {
+                    playAfterRefresh = false;
+                    mainHandler.postDelayed(() -> {
+                        setStatus("Starting playback.");
+                        speak("Starting playback.");
+                        callPlayer("playVideo()");
+                    }, 300);
+                }
             });
         }
 

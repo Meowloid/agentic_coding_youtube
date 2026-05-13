@@ -17,9 +17,10 @@ It intentionally starts small:
 - Home cues the starting playlist source.
 - Caregiver settings can also open the configured YouTube source.
 - Caregiver settings can switch between hardcoded source slots.
-- Caregiver settings can manage a stored list of YouTube channel links for future latest-upload refresh.
+- Caregiver settings can manage a stored list of YouTube channel links.
+- The channel manager can refresh recent uploads from saved channel links and load them as a generated queue.
 - The first source is the working audio-novel playlist.
-- The second source is a placeholder for curated channel latest uploads.
+- The second source is curated channel latest uploads.
 
 The first native goal is to validate Android touch/TTS behavior on a real phone before embedding or controlling YouTube playback directly.
 
@@ -47,4 +48,5 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 - Embedded playback is experimental and may behave differently across devices, WebView versions, and signed-in YouTube/Premium states.
 - Source slots are currently hardcoded in `MainActivity.java`.
 - Channel links are stored in Android app storage through the caregiver Manage Channels dialog.
-- Refresh/generation of recent uploads is not implemented yet.
+- Direct `/channel/UC...` YouTube links are the most reliable channel input. `@handle` links use a best-effort lookup and may fail if YouTube changes its page markup.
+- Recent uploads are generated from YouTube RSS feeds. This avoids an API key, but it is still network-dependent.

@@ -2,7 +2,7 @@
 
 This is Prototype 1 for a simple YouTube-oriented player designed around touch memory and spoken feedback.
 
-It is currently a browser prototype so it can be tested on an Android/Huawei phone before we commit to native Android tooling.
+The original browser prototype still lives at the repo root. The native Android prototype now lives in `android/` and is the main direction for phone testing.
 
 ## Goal
 
@@ -107,13 +107,13 @@ After changing `config.js`, refresh the browser page. The server does not need t
 
 Use `TEST_CHECKLIST.md` for single-video testing and `TEST_CHECKLIST_V2_PLAYLIST.md` for playlist testing. The most important early signals are whether playback starts, whether ads appear, whether long-press speech feels reliable, and whether Home/caregiver gestures recover cleanly from mistakes.
 
-## Native Android Later
+## Native Android
 
 The native Android prototype now lives in `android/`.
 
 Open the `android` folder in Android Studio when working on the native app.
 
-Native Android should give us better control over:
+Native Android gives us better control over:
 
 - TTS language and interruption behavior.
 - Gesture detection.
@@ -122,5 +122,6 @@ Native Android should give us better control over:
 - Device-level accessibility settings.
 - YouTube handoff through Android intents or WebView experiments.
 - Embedded YouTube playback is currently being tested in the native Android shell with the YouTube IFrame Player API.
+- Caregiver-managed channel links can now be refreshed into a generated recent-uploads queue.
 
 The Android version should preserve the current tested behavior before adding new features.

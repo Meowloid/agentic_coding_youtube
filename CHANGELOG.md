@@ -46,6 +46,9 @@
 - Added a native source list with a working playlist source and a caregiver-visible placeholder for curated channel latest uploads.
 - Added caregiver source switching as a first step toward playlist/channel source management.
 - Added caregiver-managed channel link storage using Android `SharedPreferences`, with add/remove controls in the native app.
+- Added native recent-upload generation from caregiver-saved YouTube channel links using YouTube RSS feeds.
+- Added a caregiver `Refresh Recent Videos` action that loads saved channels into an embedded generated queue.
+- Added best-effort support for resolving `@handle` channel links to channel IDs, while keeping direct `/channel/UC...` links as the reliable path.
 
 ### Fixed
 
