@@ -118,7 +118,7 @@ The native Android prototype now lives in `android/`.
 
 Open the `android` folder in Android Studio when working on the native app.
 
-Native Android gives us better control over:
+Native Android gives better control over:
 
 - TTS language and interruption behavior.
 - Gesture detection.
@@ -128,7 +128,3 @@ Native Android gives us better control over:
 - YouTube handoff through Android intents or WebView experiments.
 - Embedded YouTube playback is currently being tested in the native Android shell with the YouTube IFrame Player API.
 - Caregiver-managed channel links can now be refreshed into a generated recent-uploads queue.
-
-The Android version should preserve the current tested behavior before adding new features.
-
-For private APK shipping, use GitHub Releases rather than committing APK files into the repo. See [android/README.md](android/README.md).
