@@ -128,3 +128,8 @@ Native Android gives better control over:
 - YouTube handoff through Android intents or WebView experiments.
 - Embedded YouTube playback is currently being tested in the native Android shell with the YouTube IFrame Player API.
 - Caregiver-managed channel links can now be refreshed into a generated recent-uploads queue.
+- Saved channel links are refreshed on app startup when usable links exist.
+
+The Android version should preserve the current tested behavior before adding new features.
+
+For private APK shipping, use GitHub Releases rather than committing APK files into the repo. See [android/README.md](android/README.md).

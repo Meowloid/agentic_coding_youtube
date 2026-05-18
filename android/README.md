@@ -20,6 +20,7 @@ It intentionally starts small:
 - Caregiver settings can manage a stored list of YouTube channel links.
 - The channel manager can refresh recent uploads from saved channel links and load them as a generated queue.
 - The channel manager shows the last refresh report so caregiver testing can see whether links resolved, feeds failed, or videos were added.
+- On startup, the app refreshes saved channel links into the curated recent-uploads source when usable channel links exist.
 - The first source is the working audio-novel playlist.
 - The second source is curated channel latest uploads.
 
@@ -123,3 +124,4 @@ Another stretch goal is a simple blind-user macro for saving the current video. 
 - Direct `/channel/UC...` YouTube links, raw `UC...` IDs, and YouTube RSS feed URLs with `channel_id=UC...` are the most reliable channel inputs. `@handle` links use a best-effort lookup and may fail if YouTube changes its page markup.
 - Recent uploads are generated from YouTube RSS feeds. This avoids an API key, but it is still network-dependent.
 - Refresh diagnostics include exception messages, so HTTP/network failures should be visible in the channel manager.
+- Video title TTS currently uses the English voice because YouTube may return autotranslated titles.

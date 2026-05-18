@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     private static final String CHANNEL_LINK_SEPARATOR = "\n";
     private static final int MAX_RECENT_UPLOADS = 25;
     private static final Locale INTERFACE_LOCALE = Locale.US;
-    private static final Locale TITLE_LOCALE = new Locale("id", "ID");
+    private static final Locale TITLE_LOCALE = Locale.US;
     private static final Source[] SOURCES = {
             new Source(
                     "Audio novel playlist",
@@ -177,6 +177,7 @@ public class MainActivity extends Activity {
         });
 
         setContentView(buildLayout());
+        mainHandler.postDelayed(this::refreshStartupSource, 700);
     }
 
     private View buildLayout() {
@@ -374,6 +375,20 @@ public class MainActivity extends Activity {
         setStatus("Home. " + currentSource().name + " ready.");
         speak("Home.");
         callPlayer("goHome()");
+    }
+
+    private void refreshStartupSource() {
+        if (!hasUsableCuratedChannelLinks()) {
+            return;
+        }
+
+        currentSourceIndex = 1;
+        currentTitle = currentSource().name;
+        currentVideoId = "";
+        currentVideoSeconds = 0;
+        titleText.setText(currentTitle);
+        setStatus("Refreshing saved channels.");
+        refreshLatestUploads(false);
     }
 
     private void playEmbeddedSource() {
@@ -624,6 +639,15 @@ public class MainActivity extends Activity {
         panel.addView(close);
 
         return scrollView;
+    }
+
+    private boolean hasUsableCuratedChannelLinks() {
+        for (String link : curatedChannelLinks) {
+            if (!link.trim().isEmpty() && !link.toLowerCase(Locale.US).contains("replace")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ArrayList<String> loadChannelLinks() {

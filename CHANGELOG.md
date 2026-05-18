@@ -57,6 +57,8 @@
 - Documented private APK distribution through GitHub Releases instead of committing APK build outputs.
 - Improved native TTS audibility by requesting accessibility speech audio focus, temporarily lowering embedded player volume during speech, and falling back when the Indonesian title voice is unavailable.
 - Documented stretch goals for a discovery queue and a save-current-video macro, with optional future YouTube playlist integration.
+- Changed native video title TTS to use the English voice by default because YouTube may return autotranslated titles.
+- Changed native startup to refresh caregiver-saved channel links into the curated recent-uploads source when usable links exist.
 
 ### Fixed
 
